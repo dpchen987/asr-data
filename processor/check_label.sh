@@ -1,0 +1,1 @@
+./label_checker_main --text segments.text --wav_scp segments.wav.scp --result z-result.txt --timestamp z-timestamp.txt --model_path /home/vee/projects/wenet-demo/models/final.zip --dict_path /home/vee/projects/wenet-demo/models/words.txt
