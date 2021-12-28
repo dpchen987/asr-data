@@ -4,6 +4,9 @@ import os
 import pickle
 import re
 import time
+import copy
+from collections import Counter
+import numpy as np
 import cv2
 import numpy as np
 from paddleocr import PaddleOCR
@@ -12,129 +15,33 @@ import contextlib
 import wave
 
 
+RESIZE_RATIO = 0.7
+CROP_HEIGHT_RATIO = 0.75
+SIM_THRESH = 0.80  # 对OCR容错
+
 OCR = PaddleOCR(lang='ch')
 differ = difflib.SequenceMatcher(isjunk=lambda x: x==' ')
 
 
-def calc_width_height_ratio(box):
-    width = box[1][0] - box[0][0]
-    height = box[3][1] - box[0][1]
-    ratio = width / height
-    return ratio 
-
-
-def calc_subtitle_score(box):
-    '''rules:
-    s = 1 * (width / height)
-    '''
-    score = 1 * calc_width_height_ratio(box)
-    return score
-
-
-def can_merge(last, this, height_threshold=5, y_threshold=5, x_threshold=5):
-    # print('xxxxxxxxxxxxxxxxxxxx')
-    # print('\tlast:', last)
-    # print('\tthis:', this)
-    last_height = last[3][1] - last[0][1]
-    this_height = this[3][1] - this[0][1]
-    if abs(last_height - this_height) > height_threshold:
-        #print('\theight_fail', this, last_height, this_height)
-        return 0 
-    y_delta = abs(last[0][1] - this[0][1])
-    if y_delta > y_threshold:
-        #print('\ty fail', this, y_delta)
-        return 0 
-    # x gap 是前一句的结尾与后一句的开始之间的距离（应该小于一个字体宽度/高度）
-    x_gap1 = abs(last[1][0] - this[0][0])
-    x_gap2 = abs(this[1][0] - last[0][0]) 
-    x_gap = min(x_gap1, x_gap2)
-    if x_gap > (last_height + this_height) / 2:
-        #print('\tx fail', this, x_gap)
-        return 0 
-    if x_gap1 < x_gap2:
-        return 1  # last 在前
-    else:
-        return 2  # this 在前
-
-
-def find_best(candidates, frame):
-    ''' 方法：
-    0. 合并位置Y差距小、位置X差距很小, 字体高度差距小的区域。有时候字幕断句间会加半个字体的宽度
-    1. 宽高比要大
-    2. 位置居中或居左（居右的没见过，是否有？）
-    '''
-    # r0.
-    candidates.sort(key=lambda a: a[0][0])  # 按x从左到右排序
-    merges = []
-    merged_index = {}  # {candidates_index: merge_index}
-    for i in range(len(candidates)):
-        this = candidates[i]
-        merge_index = len(merges)
-        merge = [i]
-        for j in range(i+1, len(candidates)):
-            next = candidates[j]
-            if can_merge(this, next):
-                if j in merged_index:
-                    merges[merged_index[j]].append(j)
-                else:
-                    merge.append(j)
-                    merged_index[j] = merge_index
-        if len(merge) > 1:
-            merged_index[i] = merge_index
-            merges.append(merge)
-    #print('xxx', merges)
-    #print('---', merged_index)
-    has_merged = []
-    for m in merges:
-        xx_starts = min([candidates[i][0][0] for i in m])
-        xx_ends = max([candidates[i][1][0] for i in m])
-        yy_starts = min([candidates[i][0][1] for i in m])
-        yy_ends = max([candidates[i][3][1] for i in m])
-        #print(xx_starts, xx_ends, yy_starts, yy_ends)
-        new = [
-            [xx_starts, yy_starts],
-            [xx_ends, yy_starts],
-            [xx_ends, yy_ends],
-            [xx_starts, yy_ends]
-        ]
-        #print('aaa', new)
-        has_merged.append(new)
-    for i in range(len(candidates)):
-        if i not in merged_index:
-            #print('bbb', candidates[i])
-            has_merged.append(candidates[i])
-    # r1.
-    weights = []
-    for box in has_merged:
-        score = calc_subtitle_score(box)
-        position = calc_position(box, frame)
-        if position == 'right':
-            score *= 0.5
-        weights.append((box, position, score))
-    weights.sort(key=lambda a: a[2], reverse=True)
-    return weights[0][:2]
-    
-
-def small_it(frame, ):
+def small_it(frame,):
     # return frame, 1, 0
-    to_size_min = 450
+    # to_size_min = 500
     height, width, _ = frame.shape
-    ratio = to_size_min / min(height, width)
-    height = int(height * ratio)
-    width = int(width * ratio)
+    # resize_ratio = to_size_min / min(height, width)
+    height = int(height * RESIZE_RATIO)
+    width = int(width * RESIZE_RATIO)
     resized = cv2.resize(frame, (width, height), interpolation=cv2.INTER_NEAREST)
     # 截取下面部分检测字幕
-    crop_ratio = 0.75
-    start_x = int(height * crop_ratio)
+    start_x = int(height * CROP_HEIGHT_RATIO)
     end_x = height
     start_y = 0
     end_y = width
     resized = resized[start_x:end_x, start_y:end_y]
     # print('resized:', resized.shape)
-    return resized, ratio, crop_ratio
+    return resized
 
 
-def calc_position(box, frame):
+def calc_side(box, frame):
     '''
     box: box of text by OCR
     frame: the image has the box
@@ -148,6 +55,52 @@ def calc_position(box, frame):
     if box_middle_x > middle + delta: 
         return 'right'
     return 'middle'
+
+
+def crop_origin_sub(box, resize_ratio, crop_height_ratio, frame_origin):
+    # print('---:', box)
+    top_left, top_right, bottom_right, bottom_left = box
+    crop_offset = int(frame_origin.shape[0] * crop_height_ratio)
+    # opencv 的坐标是高宽：（0,0）：左上角，x：向下(高度), y: 向右(宽度)
+    # OpenCV的xy是paddleOCR box的y,x， 故如下进行crop
+    startY, endY = int((top_left[0] - 1) / resize_ratio), int((top_right[0] + 1) / resize_ratio)
+    startX, endX = int((top_left[1] - 1) / resize_ratio), int((bottom_left[1] + 1) / resize_ratio)
+    startX += crop_offset
+    endX += crop_offset
+    # print(startX, endX, startY, endY)
+    sub = frame_origin[startX:endX, startY:endY, :]
+    return sub
+
+
+def get_main_sub(subs, sub_statistic):
+    candidates = []
+    delta = sub_statistic['sub_font_height'] * 0.5  # pixels
+    for b in subs:
+        if abs(b['sub_y_start'] - sub_statistic['sub_y_start']) > delta:
+            # print(f"{b['sub_y_position']=}, {sub_statistic['sub_y_position']=}, {delta=}")
+            continue
+        if abs(b['sub_font_height'] - sub_statistic['sub_font_height']) > delta:
+            # print(f"{b['sub_y_height']=}, {sub_statistic['sub_y_height']=}, {delta=}")
+            continue
+        if b['sub_side'] != sub_statistic['sub_side'] and b['sub_side'] != 'middle':
+            continue
+        candidates.append(b['sub_box'])
+    if not candidates:
+        # print('\tno candidates of subs', len(subs))
+        return None
+    # print('has candidates:', len(candidates))
+    if len(candidates) == 1:
+        box = candidates[0]
+    else:
+        # 符合条件的多个boxes应该是一行中间用空格隔开的，需要merge为一个
+        candidates.sort(key=lambda a: a[0][0])
+        box = [
+            candidates[0][0],
+            candidates[-1][1],
+            candidates[-1][2],
+            candidates[0][3]
+        ]
+    return box
 
 
 def detect_subtitle(frame_origin):
@@ -164,47 +117,30 @@ def detect_subtitle(frame_origin):
         ]
         先把图片缩小：1. 主要是提高处理速度，2. 不影响字幕检查，或许可以屏蔽非字幕的检测
     '''
-    frame_resized, ratio, crop_ratio = small_it(frame_origin)
+    frame_resized = small_it(frame_origin)
     # b = time.time()
     boxes = OCR.ocr(frame_resized, det=True, rec=False, cls=False)
-    # print('\tOCR.ocr detect', time.time() - b)
-    # print('boxes:')
-    # print(frame_origin.shape)
-    height, width, _ = frame_resized.shape
-    # print(f'{width=}, {height=}')
-    candicates = []
+    if not boxes:
+        return None
+    result = []
     for b in boxes:
-        if calc_width_height_ratio(b) < 1.5:
-            # 字幕应该是X方向的长方形
-            continue
-        #if b[0][1] > position_threshold and b[1][1] > position_threshold:
-        candicates.append(b)
-    if not candicates:
-        return None, '' 
-    # print('candicates:', candicates)
-    if len(candicates) == 1:
-        box = candicates[0]
-        position = calc_position(box, frame_resized)
-    else:
-        box, position = find_best(candicates, frame_resized)
-    # print('---:', box)
-    top_left, top_right, bottom_right, bottom_left = box
-    crop_offset = int(frame_origin.shape[0] * crop_ratio)
-    # opencv 的坐标是高宽：（0,0）：左上角，x：向下(高度), y: 向右(宽度)
-    # OpenCV的xy是paddleOCR box的y,x， 故如下进行crop
-    startY, endY = int((top_left[0] - 1) / ratio), int((top_right[0] + 1) / ratio)
-    startX, endX = int((top_left[1] - 1) / ratio), int((bottom_left[1] + 1) / ratio)
-    startX += crop_offset
-    endX += crop_offset
-    # print(startX, endX, startY, endY)
-    sub = frame_origin[startX:endX, startY:endY, :]
-    return sub, position
+        sub_side = calc_side(b, frame_resized)
+        sub_font_height = b[3][1] - b[0][1]
+        result.append({
+            'sub_box': b,
+            'sub_side': sub_side,
+            'sub_y_start': b[0][1],
+            'sub_font_height': sub_font_height,
+        })
+    return result
 
-
-def find_end_start(subtitles, buffer, sub_position):
+    
+def find_end_start(subtitles, buffer, sub_statistic):
     '''skip的frame可能包含上一字幕和当前字幕，从buffer里面找到上一字幕的结尾和当前字幕的开始
     可能的buffer: [last, last, last, .., current, current, curent]
     '''
+    if not buffer:
+        return
     left = 0
     right = len(buffer) - 1
     pos = len(buffer) // 2
@@ -219,13 +155,22 @@ def find_end_start(subtitles, buffer, sub_position):
     while 1:
         #print(f'{pos=}', len(buffer))
         ts, frame = buffer[pos]
-        sub, position = detect_subtitle(frame)
-        if sub is None or position != sub_position:
+        subs = detect_subtitle(frame)
+        if subs is None:
             text = ''
         else:
-            texts = OCR.ocr(sub, det=False, rec=True, cls=False)
-            texts = [t[0] for t in texts if t[1] > 0.8]
-            text = text_normalize(''.join(texts))
+            sub_box = get_main_sub(subs, sub_statistic)
+            if sub_box is None:
+                text = ''
+            else:
+                sub_img = crop_origin_sub(
+                    sub_box,
+                    RESIZE_RATIO,
+                    CROP_HEIGHT_RATIO,
+                    frame)
+                texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
+                texts = [t[0] for t in texts if t[1] > 0.8]
+                text = text_normalize(''.join(texts))
         if text != last_text:
             # go left
             right = pos
@@ -247,16 +192,107 @@ def find_end_start(subtitles, buffer, sub_position):
         subtitles.append((current_start, current_text))
 
 
+def get_most_mean(data, delta):
+    data.sort()
+    result = []
+    group = [data[0]]
+    i = 1
+    while i < len(data):
+        delta = group[-1] * 0.3
+        if data[i] - group[-1] < delta:
+            group.append(data[i])
+        else:
+            result.append(group.copy())
+            group = [data[i]]
+        i += 1
+    if group:
+        result.append(group)
+    result.sort(key=lambda a: len(a), reverse=True)
+    mean = int(sum(result[0]) / len(result[0]))
+    # print(result)
+    # print('most: ', len(result[0]), 'mean:', mean, 'groups:', len(result), 'total:', len(data))
+    return mean
+
+
+def subtitle_statistic(main_frame_subtitles):
+    '''字幕区域：高度不变，x长度不断变化
+    输出： 字幕区域的高度以及字体的高度
+    '''
+    areas = []
+    for k, v in main_frame_subtitles.items():
+        if v[1] is None:
+            continue
+        for sub in v[1]:
+            s = sub['sub_box']
+            # print(s, type(s))
+            x_start, y_start = s[0]
+            x_end = s[1][0]
+            sub_side = sub['sub_side']
+            areas.append((x_start, y_start, sub['sub_font_height'], x_end, k, sub_side))
+    areas.sort(key=lambda a: a[0])
+    # 按照y_position 和 font_height 相近进行分组, 记录x_center变化的次数
+    groups = []
+    group = [areas[0]]
+    i = 1
+    while i < len(areas):
+        if ((abs(areas[i][0] - group[-1][0]) < areas[i][2]*0.5) and 
+            (abs(areas[i][1] - group[-1][1]) < areas[i][2]*0.5) and
+            (abs(areas[i][2] - group[-1][2]) < areas[i][2]*0.3)):
+            group.append(areas[i])
+        else:
+            groups.append(copy.deepcopy(group))
+            group = [areas[i]]
+        i += 1
+    # 取x_end变化最多的group
+    print('grous:', len(groups))
+    group_count = {}
+    for i, group in enumerate(groups):
+        count = 0
+        group.sort(key=lambda a: a[4])
+        print('\tgrous:', len(group), i)
+        for j in range(1, len(group)):
+            if abs(group[j][3] - group[j-1][3]) >= 1 * group[j][2]:
+                # x end 差值大于1个字高
+                count += 1
+        group_count[i] = count
+    zz = sorted(group_count.items(), key=lambda a: a[1], reverse=True)
+    idx = zz[0][0]
+    print('xxx', group_count, idx)
+    best = groups[idx]
+    sides = [s[-1] for s in best]
+    print(sides)
+    ct = Counter(sides)
+    side = ct.most_common(1)[0][0]
+    zz = [[b[0], b[1], b[2]] for b in best]
+    x_start, y_start, font_height = np.mean(zz, axis=0)
+    return {
+        'sub_side': side,
+        'sub_x_start': x_start,
+        'sub_y_start': y_start,
+        'sub_font_height': font_height,
+    }
+ 
+
+def is_sub_box(sub_feature, sub):
+    sub = sub['sub_box']
+    # print('isisisisisisis', unchanged_subs)
+    # print(sub)
+    y_position = int(sub[0][1])
+    font_height = int((sub[3][1] - sub[0][1]))
+    if abs(y_position - sub_feature[1]) < sub_feature[2] * 0.5 and abs(font_height - sub_feature[2]) < sub_feature[2]*0.3:
+        return True
+    return False
+ 
+
 def extract_subtitle(video_path):
     print('start extracting...')
     cap = cv2.VideoCapture(video_path)
-    main_frame_subtitles = {}  #{frame_id: (timestamp, text, position), }
+    main_frame_subtitles = {}  #{frame_id: (timestamp, None or [sub, sub, ...]), }
     fps = cap.get(cv2.CAP_PROP_FPS)
     # 跳过n帧以加速提取，find_end()从跳过的帧中找到变化位置，
     # 但其假设是n帧中字幕只变化了一次，故n不能过大，否则会漏掉时间很短的字幕
     skip_frame = fps
-    # 第一次遍历video，识别main_frame(非skipped)，统计出视频位置：left/middle/right
-    positions = {'left': 0, 'middle': 0, 'right': 0}
+    # 第一次遍历video，识别main_frame(非skipped)，然后统计出视频位置：left/middle/right, 高度、高度位置
     i = 0
     while (cap.isOpened()):
         frame_exists, frame = cap.read()
@@ -267,22 +303,13 @@ def extract_subtitle(video_path):
             print('===frame:', i)
         if i % skip_frame != 1:
             continue
-        sub, position = detect_subtitle(frame)
+        subs = detect_subtitle(frame)
         current = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-        if sub is None:
-            main_frame_subtitles[i] = (current, '', '')
-            continue
-        positions[position] += 1
-        texts = OCR.ocr(sub, det=False, rec=True, cls=False)
-        texts = [t[0] for t in texts if t[1] > 0.8]
-        text = text_normalize(''.join(texts))
-        main_frame_subtitles[i] = (current, text, position)
+        main_frame_subtitles[i] = (current, subs)
     cap.release()
-    zz = sorted(positions.items(), key=lambda a: a[1], reverse=True)
-    sub_position = zz[0][0]
-    print('=== find sub_position:', sub_position, zz)
+    sub_statistic = subtitle_statistic(main_frame_subtitles)
+    print('=== sub_statistic:', sub_statistic)
     # 第二次遍历，识别skip frame，找到更精确的字幕开始结束时间
-    sim_thresh = 0.75
     buffer = []  # 缓存被skip掉的帧, [(timestamp, frame), ]
     subtitles = []  # [(timestamp, text), ]
     cap = cv2.VideoCapture(video_path)
@@ -297,20 +324,32 @@ def extract_subtitle(video_path):
         if i % skip_frame != 1:
             buffer.append((current, frame))
             continue
-        ts, text, position = main_frame_subtitles[i]
-        if position != sub_position:
-            print('!!!!!', position, text)
+        ts, subs = main_frame_subtitles[i]
+        if subs is None:
             text = ''
+        else:
+            sub_box = get_main_sub(subs, sub_statistic)
+            if sub_box is None:
+                text = ''
+            else:
+                sub_img = crop_origin_sub(
+                    sub_box,
+                    RESIZE_RATIO,
+                    CROP_HEIGHT_RATIO,
+                    frame)
+                texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
+                texts = [t[0] for t in texts if t[1] > 0.7]
+                text = text_normalize(''.join(texts))
         if not text and i == 1:
             continue
         if not text:
-            find_end_start(subtitles, buffer, sub_position)
+            find_end_start(subtitles, buffer, sub_statistic)
             buffer.clear()
             continue
         if not subtitles:
-            find_end_start(subtitles, buffer, sub_position)
-        elif calc_similary(text, subtitles[-1][1]) < sim_thresh:
-            find_end_start(subtitles, buffer, sub_position)
+            find_end_start(subtitles, buffer, sub_statistic)
+        elif calc_similary(text, subtitles[-1][1]) < SIM_THRESH:
+            find_end_start(subtitles, buffer, sub_statistic)
         print(current, text)
         subtitles.append((current, text))
         buffer.clear()
@@ -348,7 +387,6 @@ def get_best(texts):
 def fix_timeline(subtitles):
     i = 0
     print('subtitles:', len(subtitles))
-    sim_thresh = 0.75
     timelines = []
     while i < len(subtitles):
         texts = []
@@ -362,7 +400,7 @@ def fix_timeline(subtitles):
         for j in range(i, len(subtitles)):
             i = j
             textj = text_normalize(subtitles[j][1])
-            if calc_similary(textj, text) < sim_thresh:
+            if calc_similary(textj, text) < SIM_THRESH:
                 break
             texts.append(textj)
             end = subtitles[j][0]
@@ -371,13 +409,39 @@ def fix_timeline(subtitles):
         # continue
         if not timelines:
             timelines.append([start, end, text])
-        elif calc_similary(text, timelines[-1][2]) > sim_thresh:
+        elif calc_similary(text, timelines[-1][2]) > SIM_THRESH:
             timelines[-1][1] = end
             if len(text) > len(timelines[-1][2]):
                 timelines[-1][2] = text
         else:
+            # if timelines and start - timelines[-1][1] > 1000:
+            #     print(timelines[-1], start)
+            #     timelines[-1][1] += min(2000, int(2*(start-timelines[-1][1])/3))
             timelines.append([start, end, text])
     return timelines
+
+
+def merge_timeline(timeline):
+    '''把间隔小于n秒的字幕合并为同一条，以避免字幕、声音不同步
+    '''
+    merged = [timeline[0]]
+    thresh = 100
+    frame_ms = 40
+    for i in range(1, len(timeline)):
+        delta = timeline[i][0] - merged[-1][1]
+        if delta <= thresh:
+            merged[-1][1] = timeline[i][1]
+            merged[-1][2] += timeline[i][2]
+        else:
+            gap = min(2000, delta - frame_ms)
+            # print(f'{gap=}, {delta=}')
+            # print(merged[-1])
+            # print(timeline[i])
+            if gap > 0:
+                # print('\tadd gap to last end')
+                merged[-1][1] += gap
+            merged.append(timeline[i])
+    return merged
 
 
 def save_list(list_data, file_path):
@@ -392,11 +456,14 @@ def save_list(list_data, file_path):
 def extract_timeline(video_path):
     b = time.time()
     subtitles = extract_subtitle(video_path)
-    save_list(subtitles, 'z-timeline-raw.txt')
-    with open('z-subtitles.pickle', 'wb') as f:
+    video_name = video_path.split('/')[-1]
+    save_list(subtitles, f'{video_name}-timeline-raw.txt')
+    with open(f'{video_name}-subtitles.pickle', 'wb') as f:
         pickle.dump(subtitles, f)
     timeline = fix_timeline(subtitles)
-    save_list(timeline, 'z-timeline.txt')
+    save_list(timeline, f'{video_name}-timeline.txt')
+    # timeline = merge_timeline(timeline)
+    # save_list(timeline, f'{video_name}-timeline-merged.txt')
     print('done', time.time() - b)
     return timeline
 
@@ -464,7 +531,7 @@ def cut_audio(audio_path, timeline, save_dir):
 def extract_speech_text(video_path, save_dir):
     timeline = extract_timeline(video_path)
     # audio_path = f'{video_path}.wav'
-    audio_path = 'tmp-process.wav'
+    audio_path = f'{video_path}.wav'
     get_audio(video_path, audio_path)
     cut_audio(audio_path, timeline, save_dir)
     
@@ -490,19 +557,24 @@ if __name__ == '__main__':
     elif opt == 'fix':
         subtitles = pickle.load(open('z-subtitles.pickle', 'rb'))
         tl = fix_timeline(subtitles)
-        save_list(tl, 'zz.txt')
+        save_list(tl, 'z-timeline.txt')
     elif opt == 'cut':
-        fn = argv[2]
+        audio_file = argv[2]
+        video_file = argv[3].split('/')[-1]
         timeline = []
-        with open('z-timeline.txt') as f:
+        tl_name = f'{video_file}-timeline.txt'
+        print(tl_name)
+        with open(tl_name) as f:
             for l in f:
                 zz = l.strip().split()
                 if len(zz) != 3:
                     print('invalid ', l)
                     continue
-                z = (int(zz[0]), int(zz[1]), zz[2])
+                z = [int(zz[0]), int(zz[1]), zz[2]]
                 timeline.append(z)
-        cut_audio(fn, timeline, 'segments')
+        timeline = merge_timeline(timeline)
+        save_list(timeline, f'{video_file}-timeline-merged.txt')
+        cut_audio(audio_file, timeline, 'segments')
     elif opt == 'ext':
         fn = argv[2]
         save_dir = 'segments'
