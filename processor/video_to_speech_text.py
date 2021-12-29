@@ -214,6 +214,43 @@ def get_most_mean(data, delta):
     return mean
 
 
+def find_subtitle_area(areas):
+    grouped = set()
+    groups = []
+    for i in range(len(areas)):
+        if i in grouped:
+            continue
+        grouped.add(i)
+        a = areas[i]
+        group = [a]
+        for j in range(i+1, len(areas)):
+            if j in grouped:
+                continue
+            b = areas[j]
+            if ((abs(a[0] - b[0]) < a[2]*0.5) and
+                (abs(a[1] - b[1]) < a[2]*0.5) and
+                (abs(a[2] - b[2]) < a[2]*0.3)):
+                group.append(b)
+                grouped.add(j)
+        groups.append(group)
+    # 取x_end变化最多的group
+    print('grous:', len(groups))
+    group_count = {}
+    for i, group in enumerate(groups):
+        count = 0
+        print('\tgrous:', len(group), i)
+        for j in range(1, len(group)):
+            if abs(group[j][3] - group[j-1][3]) >= 1 * group[j][2]:
+                # x end 差值大于1个字高
+                count += 1
+        group_count[i] = count
+    zz = sorted(group_count.items(), key=lambda a: a[1], reverse=True)
+    idx = zz[0][0]
+    print('xxx', group_count, idx)
+    best = groups[idx]
+    return best
+    
+
 def subtitle_statistic(main_frame_subtitles):
     '''字幕区域：高度不变，x长度不断变化
     输出： 字幕区域的高度以及字体的高度
@@ -229,36 +266,7 @@ def subtitle_statistic(main_frame_subtitles):
             x_end = s[1][0]
             sub_side = sub['sub_side']
             areas.append((x_start, y_start, sub['sub_font_height'], x_end, k, sub_side))
-    areas.sort(key=lambda a: a[0])
-    # 按照y_position 和 font_height 相近进行分组, 记录x_center变化的次数
-    groups = []
-    group = [areas[0]]
-    i = 1
-    while i < len(areas):
-        if ((abs(areas[i][0] - group[-1][0]) < areas[i][2]*0.5) and 
-            (abs(areas[i][1] - group[-1][1]) < areas[i][2]*0.5) and
-            (abs(areas[i][2] - group[-1][2]) < areas[i][2]*0.3)):
-            group.append(areas[i])
-        else:
-            groups.append(copy.deepcopy(group))
-            group = [areas[i]]
-        i += 1
-    # 取x_end变化最多的group
-    print('grous:', len(groups))
-    group_count = {}
-    for i, group in enumerate(groups):
-        count = 0
-        group.sort(key=lambda a: a[4])
-        print('\tgrous:', len(group), i)
-        for j in range(1, len(group)):
-            if abs(group[j][3] - group[j-1][3]) >= 1 * group[j][2]:
-                # x end 差值大于1个字高
-                count += 1
-        group_count[i] = count
-    zz = sorted(group_count.items(), key=lambda a: a[1], reverse=True)
-    idx = zz[0][0]
-    print('xxx', group_count, idx)
-    best = groups[idx]
+    best = find_subtitle_area(areas)
     sides = [s[-1] for s in best]
     print(sides)
     ct = Counter(sides)
