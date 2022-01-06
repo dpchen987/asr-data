@@ -432,23 +432,25 @@ def fix_timeline(subtitles):
 def merge_timeline(timeline):
     '''把间隔小于n秒的字幕合并为同一条，以避免字幕、声音不同步
     '''
-    merged = [timeline[0]]
-    thresh = 100
-    frame_ms = 40
+    timeline.sort(key=lambda a: a[0])
+    thresh = 200
+    groups = []
+    group = [timeline[0]]
     for i in range(1, len(timeline)):
-        delta = timeline[i][0] - merged[-1][1]
-        if delta <= thresh:
-            merged[-1][1] = timeline[i][1]
-            merged[-1][2] += timeline[i][2]
+        delta = timeline[i][0] - group[-1][1]
+        if delta < thresh:
+            print('\t', delta, i, len(groups))
+            group.append(timeline[i])
         else:
-            gap = min(2000, delta - frame_ms)
-            # print(f'{gap=}, {delta=}')
-            # print(merged[-1])
-            # print(timeline[i])
-            if gap > 0:
-                # print('\tadd gap to last end')
-                merged[-1][1] += gap
-            merged.append(timeline[i])
+            print('==== new group', delta, i, len(groups))
+            groups.append(copy.deepcopy(group))
+            group = [timeline[i]]
+    merged = []
+    for g in groups:
+        print('g:', g)
+        text = ''.join([t[2] for t in g])
+        m = (g[0][0], g[-1][1], text)
+        merged.append(m)
     return merged
 
 
@@ -535,6 +537,37 @@ def cut_audio(audio_path, timeline, save_dir):
         with open(save_text_path, 'w') as f:
             f.write(text)
     
+def fix_timeline_with_audio(audio_path, timeline):
+    from pydub import AudioSegment, silence
+    audio = AudioSegment.from_wav(audio_path)
+    sounds = silence.detect_nonsilent(audio, min_silence_len=30, silence_thresh=audio.dBFS)
+    print('timelines: {}, sounds: {}'.format(len(timeline), len(sounds)))
+    fixed = []
+    i = 0  # index of timeline
+    j = 0  # index of sounds
+    while i < len(timeline):
+        tl_start = timeline[i][0]
+        tl_end = timeline[i][1]
+        if fixed and tl_start < fixed[-1][0]:
+            fixed[-1][1] = tl_end
+            fixed[-1][2] += timeline[i][2]
+            i += 1
+            continue
+        print(timeline[i])
+        while j < len(sounds):
+            print('\tsounds:', sounds[j])
+            if tl_start > sounds[j][1]:
+                j += 1
+                continue
+            if tl_end < sounds[j][0]:
+                break
+            tl_start = min(tl_start, sounds[j][0])
+            tl_end = max(tl_end, sounds[j][1])
+            break
+        fixed.append([tl_start, tl_end, timeline[i][2]])
+        i += 1
+    return fixed
+    
 
 def extract_speech_text(video_path, save_dir):
     timeline = extract_timeline(video_path)
@@ -545,6 +578,18 @@ def extract_speech_text(video_path, save_dir):
     
 
 if __name__ == '__main__':
+    def read(tl_name):
+        timeline = []
+        with open(tl_name) as f:
+            for l in f:
+                zz = l.strip().split()
+                if len(zz) != 3:
+                    print('invalid ', l)
+                    continue
+                z = [int(zz[0]), int(zz[1]), zz[2]]
+                timeline.append(z)
+        return timeline
+        
     from sys import argv
     opt = argv[1]
     if opt == 'det':
@@ -569,17 +614,9 @@ if __name__ == '__main__':
     elif opt == 'cut':
         audio_file = argv[2]
         video_file = argv[3].split('/')[-1]
-        timeline = []
         tl_name = f'{video_file}-timeline.txt'
         print(tl_name)
-        with open(tl_name) as f:
-            for l in f:
-                zz = l.strip().split()
-                if len(zz) != 3:
-                    print('invalid ', l)
-                    continue
-                z = [int(zz[0]), int(zz[1]), zz[2]]
-                timeline.append(z)
+        timeline = read(tl_name)
         timeline = merge_timeline(timeline)
         save_list(timeline, f'{video_file}-timeline-merged.txt')
         cut_audio(audio_file, timeline, 'segments')
@@ -587,5 +624,17 @@ if __name__ == '__main__':
         fn = argv[2]
         save_dir = 'segments'
         extract_speech_text(fn, save_dir)
+    elif opt == 't':
+        print('fix.....')
+        audio_file = argv[2]
+        video_file = argv[3]
+        tl_name = f'{video_file}-timeline.txt'
+        timeline = read(tl_name)
+        tl = fix_timeline_with_audio(audio_file, timeline)
+        with open(f'{tl_name}.fixed', 'w') as f:
+            for t in tl:
+                line = f'{t[0]}\t{t[1]}\t{t[2]}\n'
+                f.write(line)
+        cut_audio(audio_file, tl, 'segments')
     else:
         print('nothing')
