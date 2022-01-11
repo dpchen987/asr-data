@@ -52,7 +52,7 @@ def merge_speeches(speeches):
 
 def extract_speech(video_path):
     audio_path = video_path + '.wav'
-    get_audio(video_path, audio_path)
+    get_audio(video_path, audio_path, samplerate=16000)
     assert os.path.exists(audio_path)
     speeches = GPVAD.vad(audio_path)
     return speeches
