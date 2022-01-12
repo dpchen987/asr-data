@@ -10,7 +10,8 @@ import numpy as np
 import cv2
 import numpy as np
 from paddleocr import PaddleOCR
-import difflib
+
+from utils import text_normalize, calc_similary, save_list
 
 
 RESIZE_RATIO = 1.0
@@ -21,7 +22,6 @@ OCR = PaddleOCR(
     lang='ch',
     cpu_threads=os.cpu_count() - 1,
 )
-differ = difflib.SequenceMatcher(isjunk=lambda x: x==' ')
 
 
 def small_it(frame,):
@@ -333,19 +333,6 @@ def extract_subtitle_raw(video_path):
     return subtitles
 
 
-def text_normalize(text):
-    non_stop_puncs = '＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､、〃《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏'
-    text = text.replace(' ', '')
-    text = re.sub(non_stop_puncs, '', text)
-    return text
-
-
-def calc_similary(t1, t2):
-    differ.set_seq1(t1)
-    differ.set_seq2(t2)
-    return differ.ratio()
-
-
 def get_best(texts):
     if len(set(texts)) == 1:
         return texts[0]
@@ -421,25 +408,6 @@ def merge_timeline(timeline):
     return merged
 
 
-def save_list(list_data, file_path):
-    with open(file_path, 'w') as f:
-        for t in list_data:
-            z = [str(i) for i in t]
-            s = "\t".join(z)
-            line = f'{s}\n'
-            f.write(line)
-    
-
-def read_list(fiel_path):
-    items = []
-    with open(fiel_path) as f:
-        for line in f:
-            zz = line.strip().split('\t')
-            item = [int(i) if i.isdigit() else i for i in zz]
-            items.append(item)
-    return items
-
-
 def extract_subtitle(video_path, save=True, fix=True):
     b = time.time()
     subtitles = extract_subtitle_raw(video_path)
@@ -459,35 +427,15 @@ def extract_subtitle(video_path, save=True, fix=True):
 
    
 if __name__ == '__main__':
-    def read(tl_name):
-        timeline = []
-        with open(tl_name) as f:
-            for l in f:
-                zz = l.strip().split()
-                if len(zz) != 3:
-                    print('invalid ', l)
-                    continue
-                z = [int(zz[0]), int(zz[1]), zz[2]]
-                timeline.append(z)
-        return timeline
-        
     from sys import argv
     opt = argv[1]
     if opt == 'det':
         fn = argv[2]
         img = cv2.imread(fn)
         b = time.time()
-        sub, pos = detect_subtitle(img)
-        print('detect ', time.time() - b)
-        print('position:', pos)
-        b = time.time()
-        text = OCR.ocr(sub, det=False, rec=True, cls=False)
+        text = OCR.ocr(img, det=True, rec=True, cls=False)
         print('recognize:', time.time() - b, text)
-        cv2.imwrite('z-sub.jpg', sub)
-        print()
-    elif opt == 'tl':
-        fn = argv[2]
-        timeline = extract_timeline(fn)
+        print(text)
     elif opt == 'fix':
         subtitles = pickle.load(open('z-subtitles.pickle', 'rb'))
         tl = fix_timeline(subtitles)
