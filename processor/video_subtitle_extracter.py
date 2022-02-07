@@ -268,7 +268,7 @@ def extract_subtitle_raw(video_path):
     fps = cap.get(cv2.CAP_PROP_FPS)
     # 跳过n帧以加速提取，find_end()从跳过的帧中找到变化位置，
     # 但其假设是n帧中字幕只变化了一次，故n不能过大，否则会漏掉时间很短的字幕
-    skip_frame = fps
+    skip_frame = int(fps)
     # 第一次遍历video，识别main_frame(非skipped)，然后统计出视频位置：left/middle/right, 高度、高度位置
     i = 0
     while (cap.isOpened()):
@@ -277,7 +277,7 @@ def extract_subtitle_raw(video_path):
             break
         i += 1
         if i % 1500 == 1:
-            print(f'===frame: {i} @fps:{skip_frame}')
+            print(f'===frame: {i} @skip_frame:{skip_frame}, fps: {fps}')
         if i % skip_frame != 1:
             continue
         subs = detect_subtitle(frame)
