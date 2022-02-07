@@ -278,7 +278,7 @@ def extract_subtitle_raw(video_path):
             break
         i += 1
         if i % 1500 == 1:
-            print(f'===frame: {i} @skip_frame:{skip_frame}, fps: {fps}')
+            print(f'===frame: {i} @skip_frame:{skip_frame}, fps: {fps}', time.ctime())
         if i % skip_frame != 1:
             continue
         subs = detect_subtitle(frame)
