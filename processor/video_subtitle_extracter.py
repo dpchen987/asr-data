@@ -22,6 +22,7 @@ print(f'================== CPU:{os.cpu_count()} ================')
 OCR = PaddleOCR(
     lang='ch',
     cpu_threads=os.cpu_count() - 1,
+    enable_mkldnn=True,
 )
 
 
