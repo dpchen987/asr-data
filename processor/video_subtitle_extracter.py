@@ -18,6 +18,7 @@ RESIZE_RATIO = 1.0
 CROP_HEIGHT_RATIO = 0.75
 SIM_THRESH = 0.80  # 对OCR容错
 
+print(f'================== CPU:{os.cpu_count} ================')
 OCR = PaddleOCR(
     lang='ch',
     cpu_threads=os.cpu_count() - 1,
