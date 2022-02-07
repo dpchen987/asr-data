@@ -18,7 +18,7 @@ RESIZE_RATIO = 1.0
 CROP_HEIGHT_RATIO = 0.75
 SIM_THRESH = 0.80  # 对OCR容错
 
-print(f'================== CPU:{os.cpu_count} ================')
+print(f'================== CPU:{os.cpu_count()} ================')
 OCR = PaddleOCR(
     lang='ch',
     cpu_threads=os.cpu_count() - 1,
@@ -277,7 +277,7 @@ def extract_subtitle_raw(video_path):
             break
         i += 1
         if i % 1500 == 1:
-            print('===frame:', i)
+            print(f'===frame: {i} @fps:{skip_frame}')
         if i % skip_frame != 1:
             continue
         subs = detect_subtitle(frame)
@@ -301,6 +301,7 @@ def extract_subtitle_raw(video_path):
         if i % skip_frame != 1:
             buffer.append((current, frame))
             continue
+        print(f'frame: {i}')
         ts, subs = main_frame_subtitles[i]
         if subs is None:
             text = ''
