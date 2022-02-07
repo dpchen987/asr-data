@@ -21,7 +21,7 @@ SIM_THRESH = 0.80  # 对OCR容错
 print(f'================== CPU:{os.cpu_count()} ================')
 OCR = PaddleOCR(
     lang='ch',
-    cpu_threads=os.cpu_count() - 1,
+    # cpu_threads=,  #  40 比默认的10 还慢一点点
     enable_mkldnn=True,
 )
 
