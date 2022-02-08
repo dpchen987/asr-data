@@ -17,6 +17,7 @@ from utils import text_normalize, calc_similary, save_list
 RESIZE_RATIO = 1.0
 CROP_HEIGHT_RATIO = 0.75
 SIM_THRESH = 0.80  # 对OCR容错
+too_small_thresh = 20
 
 print(f'================== CPU:{os.cpu_count()} ================')
 OCR = PaddleOCR(
@@ -153,7 +154,6 @@ def find_end_start(subtitles, buffer, sub_statistic):
         # 第一帧, subtitles 还是空的
         last_text = ''
     last_end = 0
-    too_small_thresh = 20
     current_start = 0
     current_text = ''
     while 1:
@@ -320,9 +320,12 @@ def extract_subtitle_raw(video_path):
                     RESIZE_RATIO,
                     CROP_HEIGHT_RATIO,
                     frame)
-                texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
-                texts = [t[0] for t in texts if t[1] > 0.7]
-                text = text_normalize(''.join(texts))
+                if sub_img.shape[0] < too_small_thresh or sub_img.shape[1] < too_small_thresh:
+                    text = ''
+                else:
+                    texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
+                    texts = [t[0] for t in texts if t[1] > 0.7]
+                    text = text_normalize(''.join(texts))
         if not text and i == 1:
             continue
         if not text:
