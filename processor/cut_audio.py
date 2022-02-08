@@ -13,17 +13,25 @@ def cut(audio_file, timeline, save_format='wav'):
     data, samplerate = librosa.load(audio_file, sr=16000)
     print(data.shape, type(data), samplerate)
     counter = 0
+
+    audio_file = audio_file.replace('.wav', '')
+    text_all_path = audio_file + '.txt'
+    file = open(text_all_path, "w")
+
     for tl in timeline:
         start = int(tl[0] / 1000 * samplerate)
         end = int(tl[1] / 1000 * samplerate)
         text = tl[2]
         text_path = audio_file + f'_{counter:05}.txt'
-        with open(text_path, 'w') as f:
-            f.write(text)
+        file.writelines(f'{text_path}\t{text}\n')
+        # with open(text_path, 'w') as f:
+        #     f.write(text)
         segment = data[start: end]
         save_name = audio_file + f'_{counter:05}.{save_format}'
         sf.write(save_name, segment, samplerate, format=save_format)
         counter += 1
+
+    file.close()
 
 
 def read_list(file_path):
