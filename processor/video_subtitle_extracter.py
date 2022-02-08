@@ -425,7 +425,7 @@ def extract_subtitle(video_path, save=True, fix=True):
     #     pickle.dump(subtitles, f)
     timeline_fixed = fix_timeline(subtitles)
     if save:
-        video_name = video_path.split('/')[-1]
+        video_name = video_path.replace('.mp4', '')
         save_list(subtitles, f'{video_name}-subtitle-raw.txt')
         save_list(timeline_fixed, f'{video_name}-subtitle.txt')
     # timeline = merge_timeline(timeline)
