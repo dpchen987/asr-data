@@ -153,6 +153,7 @@ def find_end_start(subtitles, buffer, sub_statistic):
         # 第一帧, subtitles 还是空的
         last_text = ''
     last_end = 0
+    too_small_thresh = 20
     current_start = 0
     current_text = ''
     while 1:
@@ -171,9 +172,12 @@ def find_end_start(subtitles, buffer, sub_statistic):
                     RESIZE_RATIO,
                     CROP_HEIGHT_RATIO,
                     frame)
-                texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
-                texts = [t[0] for t in texts if t[1] > 0.8]
-                text = text_normalize(''.join(texts))
+                if sub_img.shape[0] < too_small_thresh or sub_img.shape[1] < too_small_thresh:
+                    text = ''
+                else:
+                    texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
+                    texts = [t[0] for t in texts if t[1] > 0.8]
+                    text = text_normalize(''.join(texts))
         if text != last_text:
             # go left
             right = pos
