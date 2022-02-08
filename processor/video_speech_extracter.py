@@ -51,7 +51,7 @@ def merge_speeches(speeches):
 
 
 def extract_speech(video_path):
-    audio_path = video_path + '.wav'
+    audio_path = video_path.replace('mp4', 'wav')
     get_audio(video_path, audio_path, samplerate=16000)
     assert os.path.exists(audio_path)
     speeches = GPVAD.vad(audio_path)
@@ -206,14 +206,15 @@ def align_raw(speeches, subtitles):
 
 
 def extract_align(video_path):
+    vp = video_path.replace('.mp4', '')
     subtitles = extract_subtitle(video_path, fix=False)
     speeches = extract_speech(video_path)
-    save_list(speeches, video_path+'-speeches-raw.txt')
+    save_list(speeches, vp+'-speeches-raw.txt')
     speeches = merge_speeches(speeches)
-    save_list(speeches, video_path+'-speeches-merged.txt')
+    save_list(speeches, vp+'-speeches-merged.txt')
     timeline = align_raw(speeches, subtitles)
     print(timeline)
-    save_list(timeline, video_path+'-timeline.txt')
+    save_list(timeline, vp+'-timeline.txt')
     return timeline
 
 
@@ -233,7 +234,7 @@ if __name__ == '__main__':
     elif opt == 'ext':
         vp = argv[2]
         timeline = extract_align(vp)
-        audio_file = vp + '.wav'
+        audio_file = vp.replace('mp4', 'wav')
         cut(audio_file, timeline)
     elif opt == 'alg':
         vp = argv[2]
