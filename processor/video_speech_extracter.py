@@ -113,7 +113,7 @@ def align_raw(speeches, subtitles):
         speech_start, speech_end = spch
         # 先跳到跟本段语音重合的字幕
         skiped_subs = []
-        while j < len(subtitles) - 1 and speech_start > subtitles[j][0] or not subtitles[j][1]:
+        while j < len(subtitles) - 1 and (speech_start > subtitles[j][0] or not subtitles[j][1]):
             skiped_subs.append(subtitles[j])
             print('zzzzzz', j, len(subtitles))
             j += 1
