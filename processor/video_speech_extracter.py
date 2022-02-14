@@ -118,6 +118,8 @@ def align_raw(speeches, subtitles):
             print('zzzzzz', j, len(subtitles))
             j += 1
             continue
+        if j >= len(subtitles):
+            continue
         print('-->', i, spch, '==>', j, subtitles[j])
         sub_stamp = subtitles[j][0]
         if sub_stamp < speech_start or sub_stamp > speech_end:
