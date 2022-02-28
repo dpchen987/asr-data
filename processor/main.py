@@ -3,7 +3,7 @@ from video_speech_extracter import extract_align
 from cut_audio import cut
 import textwrap
 import os
-import datetime
+import time
 
 
 PER_COUNT = 256
@@ -47,7 +47,6 @@ def process(video_path, audio_root):
         else:
             timeline = None
             print('done: ', video_path)
-
     if timeline:
         audio_path = f'{save_dir}/{hashnum}.{AUDIO_FORMAT}'
         cut(audio_path, timeline)
@@ -60,11 +59,11 @@ def main():
     paths = []
     _dir = '/aidata/video'
     audio_root = '/aidata/audio/private'
-    time_threshold = datetime.datetime.now() - datetime.timedelta(minutes=10)
+    time_threshold = time.time() - 10*60
     for root, dirs, files in os.walk(_dir):
         for f in files:
             path = os.path.join(root, f)
-            filetime = datetime.fromtimestamp(os.path.getmtime(path))
+            filetime = os.path.getmtime(path)
             if filetime < time_threshold:
                 paths.append(path)
 
