@@ -69,7 +69,7 @@ def main():
 
     for path in paths:
         print('path: ', path, '\n')
-        hashnum = video_path.split('/')[-1].replace('.mp4', '')
+        hashnum = path.split('/')[-1].replace('.mp4', '')
         if not hashnum.isdigit():
             print('invalid hashnum: ', hashnum, '\n')
             continue 
