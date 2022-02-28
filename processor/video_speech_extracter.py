@@ -50,8 +50,9 @@ def merge_speeches(speeches):
     return merged
 
 
-def extract_speech(video_path):
-    audio_path = video_path.replace('mp4', 'wav')
+def extract_speech(video_path, save_dir, audio_format='opus'):
+    audio_name = video_path.split('/')[-1].replace('mp4', audio_format)
+    audio_path = os.path.join(save_dir, audio_name) 
     get_audio(video_path, audio_path, samplerate=16000)
     assert os.path.exists(audio_path)
     speeches = GPVAD.vad(audio_path)
@@ -207,9 +208,9 @@ def align_raw(speeches, subtitles):
     return alignments
 
 
-def extract_align(video_path):
+def extract_align(video_path, save_dir):
     vp = video_path.replace('.mp4', '')
-    subtitles = extract_subtitle(video_path, fix=False)
+    subtitles = extract_subtitle(video_path, save_dir, fix=False)
     speeches = extract_speech(video_path)
     save_list(speeches, vp+'-speeches-raw.txt')
     speeches = merge_speeches(speeches)

@@ -418,16 +418,16 @@ def merge_timeline(timeline):
     return merged
 
 
-def extract_subtitle(video_path, save=True, fix=True):
+def extract_subtitle(video_path, save_dir, save=True, fix=True):
     b = time.time()
     subtitles = extract_subtitle_raw(video_path)
     # with open(f'{video_name}-subtitles.pickle', 'wb') as f:
     #     pickle.dump(subtitles, f)
     timeline_fixed = fix_timeline(subtitles)
     if save:
-        video_name = video_path.replace('.mp4', '')
-        save_list(subtitles, f'{video_name}-subtitle-raw.txt')
-        save_list(timeline_fixed, f'{video_name}-subtitle.txt')
+        video_name = video_path.replace('.mp4', '').split('/')[-1]
+        save_list(subtitles, f'{save_dir}/{video_name}-subtitle-raw.txt')
+        save_list(timeline_fixed, f'{save_dir}/{video_name}-subtitle.txt')
     # timeline = merge_timeline(timeline)
     # save_list(timeline, f'{video_name}-timeline-merged.txt')
     print('done', time.time() - b)
