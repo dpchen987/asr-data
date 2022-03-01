@@ -166,6 +166,20 @@ def extract_feature(wavefilepath):
     return np.log(mel + EPS).T
 
 
+def extract_feature_mem(wav, sr): 
+    if wav.ndim > 1:
+        wav = wav.mean(-1)
+    print('---------', wav.shape, wav.dtype)
+    if wav.dtype != 'float32':
+        print('\t-----> change to float32')
+        wav = wav.astype('float32')
+    wav = librosa.resample(wav, sr, target_sr=SAMPLE_RATE)
+    print('---------', wav.shape, wav.dtype)
+    mel = librosa.feature.melspectrogram(
+        wav.astype(np.float32), SAMPLE_RATE, **LMS_ARGS)
+    return np.log(mel + EPS).T
+
+
 class GPVAD:
     def __init__(self) -> None:
         root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -182,7 +196,11 @@ class GPVAD:
         self.postprocessing_method = double_threshold
 
     def vad(self, audio_path):
-        feature = extract_feature(audio_path)
+        wav, sr = librosa.load(audio_path, sr=16000)
+        return self.vad_mem(wav, sr)
+
+    def vad_mem(self, wav, sr):
+        feature = extract_feature_mem(wav, sr)
         feature = np.expand_dims(feature, axis=0)
         output = []
         with torch.no_grad():
@@ -193,10 +211,8 @@ class GPVAD:
             if prediction_time is not None:  # Some models do not predict timestamps
                 thresholded_prediction = self.postprocessing_method(
                     prediction_time, *self.threshold)
-                print('==', thresholded_prediction)
                 labelled_predictions = decode_with_timestamps(
                     self.encoder, thresholded_prediction)
-                print('--', labelled_predictions)
                 for label, start, end in labelled_predictions[0]:
                     if label != 'Speech': continue
                     output.append([start*self.model_resolution, end*self.model_resolution])
@@ -211,7 +227,16 @@ if __name__ == "__main__":
     b = time.time()
     oo = pgvad.vad(fn)
     print('time:', time.time() - b)
-    b = time.time()
-    oo = pgvad.vad(fn)
-    print('time:', time.time() - b)
+    # b = time.time()
+    # oo = pgvad.vad(fn)
+    # print('time:', time.time() - b)
     print(oo)
+    import soundfile as sf
+    from io import BytesIO
+    audio = open(fn, 'rb').read()
+    data, samplerate = sf.read(BytesIO(audio), dtype='float32')
+    print('xxxxx', len(data), samplerate)
+    npdata = data  #np.array(data, dtype='float32')
+    print('======', data == npdata)
+    tl = pgvad.vad_mem(npdata, samplerate)
+    print(tl)
