@@ -231,12 +231,12 @@ if __name__ == "__main__":
     # oo = pgvad.vad(fn)
     # print('time:', time.time() - b)
     print(oo)
-    import soundfile as sf
-    from io import BytesIO
-    audio = open(fn, 'rb').read()
-    data, samplerate = sf.read(BytesIO(audio), dtype='float32')
-    print('xxxxx', len(data), samplerate)
-    npdata = data  #np.array(data, dtype='float32')
-    print('======', data == npdata)
-    tl = pgvad.vad_mem(npdata, samplerate)
-    print(tl)
+    # import soundfile as sf
+    # from io import BytesIO
+    # audio = open(fn, 'rb').read()
+    # data, samplerate = sf.read(BytesIO(audio), dtype='float32')
+    # print('xxxxx', len(data), samplerate)
+    # npdata = data  #np.array(data, dtype='float32')
+    # print('======', data == npdata)
+    # tl = pgvad.vad_mem(npdata, samplerate)
+    # print(tl)
