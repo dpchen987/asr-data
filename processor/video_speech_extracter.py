@@ -213,9 +213,9 @@ def extract_align(video_path, save_dir):
     subtitles = extract_subtitle(video_path, save_dir, fix=False)
     speeches = extract_speech(video_path, save_dir)
     video_name = video_path.split('/')[-1].replace('.mp4', '')
-    save_list(speeches, vp+'-speeches-raw.txt')
+    save_list(speeches, os.path.join(save_dir, video_name+'-speeches-raw.txt'))
     speeches = merge_speeches(speeches)
-    save_list(speeches, vp+'-speeches-merged.txt')
+    save_list(speeches, os.path.join(save_dir, video_name+'-speeches-merged.txt'))
     timeline = align_raw(speeches, subtitles)
     print(timeline)
     save_list(timeline, vp+'-timeline.txt')
@@ -233,7 +233,7 @@ if __name__ == '__main__':
         cut(ap, tl)
     elif opt == 'sp':
         vp = argv[2]
-        stl = extract_speech(vp)
+        stl = extract_speech(vp, '.')
         print(stl)
     elif opt == 'ext':
         vp = argv[2]
