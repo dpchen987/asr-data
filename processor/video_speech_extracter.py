@@ -218,7 +218,7 @@ def extract_align(video_path, save_dir):
     save_list(speeches, os.path.join(save_dir, video_name+'-speeches-merged.txt'))
     timeline = align_raw(speeches, subtitles)
     print(timeline)
-    save_list(timeline, vp+'-timeline.txt')
+    save_list(timeline, os.path.join(save_dir, video_name+'-timeline.txt'))
     return timeline
 
 
