@@ -211,7 +211,8 @@ def align_raw(speeches, subtitles):
 def extract_align(video_path, save_dir):
     vp = video_path.replace('.mp4', '')
     subtitles = extract_subtitle(video_path, save_dir, fix=False)
-    speeches = extract_speech(video_path)
+    speeches = extract_speech(video_path, save_dir)
+    video_name = video_path.split('/')[-1].replace('.mp4', '')
     save_list(speeches, vp+'-speeches-raw.txt')
     speeches = merge_speeches(speeches)
     save_list(speeches, vp+'-speeches-merged.txt')
