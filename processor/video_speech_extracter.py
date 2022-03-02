@@ -5,30 +5,9 @@ from video_subtitle_extracter import save_list
 from video_subtitle_extracter import calc_similary, SIM_THRESH
 from video_subtitle_extracter import fix_timeline
 from gpvad.forward import GPVAD
+from utils import get_audio
 
 GPVAD = GPVAD()
-
-
-def get_audio(video_path, audio_path, channel=1, samplerate=48000, bitrate=32000):
-    args = [
-        f'-ac {channel}',
-        f'-ar {samplerate}',
-        f'-ab {bitrate}',
-        '-y',
-    ]
-    supported_format = {
-        'wav': '-map_metadata -1 -fflags +bitexact -acodec pcm_s16le',
-        'opus': '-acodec libopus',
-        'mp3': '-acodec libmp3lame',
-    } 
-    format = audio_path.split('.')[-1].lower()
-    if format not in supported_format:
-        raise ValueError(f'not supported audio format: {format}')
-    args.append(supported_format[format])
-    args = ' '.join(args)
-    cmd = f'ffmpeg -i {video_path} {args} {audio_path}'
-    print(cmd)
-    os.system(cmd)
 
 
 def merge_speeches(speeches):
