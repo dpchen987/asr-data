@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from paddleocr import PaddleOCR
 
-from utils import text_normalize, calc_similary, save_list
+from utils import text_normalize, calc_similary, save_list, read_list
 
 
 RESIZE_RATIO = 1.0
@@ -419,15 +419,23 @@ def merge_timeline(timeline):
 
 
 def extract_subtitle(video_path, save_dir, save=True, fix=True):
+    video_name = video_path.replace('.mp4', '').split('/')[-1]
+    path_subtitle_raw = f'{save_dir}/{video_name}-subtitle-raw.txt'
+    path_subtitle = f'{save_dir}/{video_name}-subtitle.txt'
+    if save:
+        if os.path.exists(path_subtitle):
+            if fix:
+                return read_list(path_subtitle)
+            else:
+                return read_list(path_subtitle_raw)
     b = time.time()
     subtitles = extract_subtitle_raw(video_path)
     # with open(f'{video_name}-subtitles.pickle', 'wb') as f:
     #     pickle.dump(subtitles, f)
     timeline_fixed = fix_timeline(subtitles)
     if save:
-        video_name = video_path.replace('.mp4', '').split('/')[-1]
-        save_list(subtitles, f'{save_dir}/{video_name}-subtitle-raw.txt')
-        save_list(timeline_fixed, f'{save_dir}/{video_name}-subtitle.txt')
+        save_list(subtitles, path_subtitle_raw)
+        save_list(timeline_fixed, path_subtitle)
     # timeline = merge_timeline(timeline)
     # save_list(timeline, f'{video_name}-timeline-merged.txt')
     print('done', time.time() - b)
