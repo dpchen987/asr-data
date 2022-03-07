@@ -31,7 +31,7 @@ def merge_speeches(speeches):
 
 def extract_speech(video_path, save_dir, audio_format='opus'):
     audio_name = video_path.split('/')[-1].replace('mp4', audio_format)
-    audio_path = os.path.join(save_dir, audio_name) 
+    audio_path = os.path.join(save_dir, audio_name)
     get_audio(video_path, audio_path)
     assert os.path.exists(audio_path)
     speeches = GPVAD.vad(audio_path)
@@ -89,6 +89,7 @@ def align_raw(speeches, subtitles):
     i = 0  # index of speeches
     j = 0  # index of subtitles
     gap_speech_subtitle = 500
+    print(f'{ len(speeches) = }')
     for i, spch in enumerate(speeches):
         speech_start, speech_end = spch
         # 先跳到跟本段语音重合的字幕
@@ -217,7 +218,7 @@ if __name__ == '__main__':
         vp = argv[2]
         timeline = extract_align(vp)
         audio_file = vp.replace('mp4', 'wav')
-        cut(audio_file, timeline)
+        # cut(audio_file, timeline)
     elif opt == 'alg':
         vp = argv[2]
         from video_subtitle_extracter import read_list
