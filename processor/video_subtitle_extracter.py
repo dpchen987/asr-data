@@ -454,6 +454,10 @@ if __name__ == '__main__':
         text = OCR.ocr(img, det=True, rec=True, cls=False)
         print('recognize:', time.time() - b, text)
         print(text)
+    elif opt == 'ext':
+        vp = argv[2]
+        save_dir = '.'
+        extract_subtitle(vp, save_dir)
     elif opt == 'fix':
         subtitles = pickle.load(open('z-subtitles.pickle', 'rb'))
         tl = fix_timeline(subtitles)
