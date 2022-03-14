@@ -35,6 +35,7 @@ def extract_speech(video_path, save_dir, audio_format='opus'):
     get_audio(video_path, audio_path)
     assert os.path.exists(audio_path)
     speeches = GPVAD.vad(audio_path)
+    print('done extract audio:', audio_path)
     return speeches
 
 
@@ -96,7 +97,7 @@ def align_raw(speeches, subtitles):
         skiped_subs = []
         while j < len(subtitles) - 1 and (speech_start > subtitles[j][0] or not subtitles[j][1]):
             skiped_subs.append(subtitles[j])
-            print('zzzzzz', j, len(subtitles))
+            print('zzzzzz', j, len(subtitles), subtitles[j])
             j += 1
             continue
         if j >= len(subtitles):

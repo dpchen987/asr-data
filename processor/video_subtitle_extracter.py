@@ -22,7 +22,7 @@ too_small_thresh = 20
 print(f'================== CPU:{os.cpu_count()} ================')
 OCR = PaddleOCR(
     lang='ch',
-    # cpu_threads=,  #  40 比默认的10 还慢一点点
+    cpu_threads=4,  #  40 比默认的10 还慢一点点
     enable_mkldnn=True,
 )
 
@@ -56,7 +56,7 @@ def calc_side(box, frame):
     delta = middle * 0.1
     if box_middle_x < middle - delta:
         return 'left'
-    if box_middle_x > middle + delta: 
+    if box_middle_x > middle + delta:
         return 'right'
     return 'middle'
 
@@ -138,7 +138,7 @@ def detect_subtitle(frame_origin):
         })
     return result
 
-    
+
 def find_end_start(subtitles, buffer, sub_statistic):
     '''skip的frame可能包含上一字幕和当前字幕，从buffer里面找到上一字幕的结尾和当前字幕的开始
     可能的buffer: [last, last, last, .., current, current, curent]
@@ -234,7 +234,7 @@ def find_subtitle_area(areas):
     print('xxx', group_count, idx)
     best = groups[idx]
     return best
-    
+
 
 def subtitle_statistic(main_frame_subtitles):
     '''字幕区域：高度不变，x长度不断变化
@@ -264,10 +264,10 @@ def subtitle_statistic(main_frame_subtitles):
         'sub_y_start': y_start,
         'sub_font_height': font_height,
     }
- 
+
 
 def extract_subtitle_raw(video_path):
-    print('start extracting...')
+    print('start extracting...', video_path)
     cap = cv2.VideoCapture(video_path)
     main_frame_subtitles = {}  #{frame_id: (timestamp, None or [sub, sub, ...]), }
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -443,7 +443,7 @@ def extract_subtitle(video_path, save_dir, save=True, fix=True):
         return timeline_fixed
     return subtitles
 
-   
+
 if __name__ == '__main__':
     from sys import argv
     opt = argv[1]

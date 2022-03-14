@@ -15,14 +15,18 @@ def save_list(list_data, file_path):
             s = "\t".join(z)
             line = f'{s}\n'
             f.write(line)
-    
+
 
 def read_list(fiel_path):
     items = []
     with open(fiel_path) as f:
         for line in f:
             zz = line.strip().split('\t')
-            item = [int(i) if i.isdigit() else i for i in zz]
+            item = [int(zz[0])]
+            if len(zz) == 2:
+                item.append(zz[1])
+            else:
+                item.append('')
             items.append(item)
     return items
 
@@ -53,7 +57,7 @@ def get_audio(video_path, audio_path, channel=1, samplerate=48000, bitrate=32000
         'wav': '-map_metadata -1 -fflags +bitexact -acodec pcm_s16le',
         'opus': ' -f wav - | opusenc - ',
         'mp3': '-acodec libmp3lame',
-    } 
+    }
     format = audio_path.split('.')[-1].lower()
     if format not in supported_format:
         raise ValueError(f'not supported audio format: {format}')

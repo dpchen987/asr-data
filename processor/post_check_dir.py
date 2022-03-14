@@ -15,6 +15,12 @@ def dir_has_no(the_dir, reg_):
                 has_count += 1
         if len(files) and has_count == 0:
             result.append(root)
+    if False:
+        for p in result:
+            name = p.split('/')[-1]
+            fp = f'{p}/{name}.opus'
+            if os.path.exists(fp):
+                os.remove(fp)
     return result
 
 
