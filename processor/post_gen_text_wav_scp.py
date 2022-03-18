@@ -52,7 +52,7 @@ def get_duration(fp):
     cmd = f'sndfile-info {fp}'
     p = os.popen(cmd)
     out = p.read()
-    d = re.findall(r'Duration.*?(\d{2}):(\d{2}):(\d{2})')[0]
+    d = re.findall(r'Duration.*?(\d{2}):(\d{2}):(\d{2})', out)[0]
     h, m, s = d
     seconds = int(h) * 3600 + int(m) * 60 + int(s)
     return seconds, ':'.join(d)
@@ -77,14 +77,20 @@ def parse_unlabeled(fp, in_dir, out_dir):
             i += 1
             break
     left = lines_origin[i:]
+    print('left', len(left))
     not_long = []
     too_long = []
     for line in left:
-        wid, text = line.split()
+        #print(f'[{line}]')
+        zz = line.strip().split('\t')
+        if len(zz) != 2:
+            print('bad line', line)
+            continue
+        wid, text = zz
         fp_wav = wavs[wid]
         seconds, ts = get_duration(fp_wav)
         if seconds > 180:
-            too_long.append(f'{ts}\t{fp_wav}\t{text}')
+            too_long.append(f'{ts}\t{fp_wav}\t{text}\n')
             print('too long', ts, fp_wav)
         else:
             not_long.append(line)
@@ -99,13 +105,18 @@ def get_unlabeled(in_dir, out_dir):
     too_long = []
     for root, dirs, files in os.walk(in_dir):
         for f in files:
-            if not re.match('z-slice-text-\d\d.txt$'):
+            if not re.match(r'z-slice-text-\d\d.txt$', f):
                 continue
             fp = os.path.join(root, f)
             if now - os.path.getmtime(fp) < 5*60:
                 print('not old', fp)
                 continue
-            tlong = parse_unlabeled(fp, out_dir)
+            new_fp = fp.replace(in_dir, out_dir)
+            if os.path.exists(new_fp):
+                print('parsed', fp)
+                continue
+            print('parsing ', fp)
+            tlong = parse_unlabeled(fp, in_dir, out_dir)
             too_long.extend(tlong)
 
     with open('z-too-long-wave.txt', 'w') as f:
