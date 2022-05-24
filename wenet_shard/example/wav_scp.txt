@@ -1,0 +1,10 @@
+14_3466_20170826171159.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171159.wav
+14_3466_20170826171236.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171236.wav
+14_3466_20170826171323.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171323.wav
+14_3466_20170826171404.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171404.wav
+14_3466_20170826171424.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171424.wav
+14_3466_20170826171437.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171437.wav
+14_3466_20170826171511.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171511.wav
+14_3466_20170826171524.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171524.wav
+14_3466_20170826171536.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171536.wav
+14_3466_20170826171549.wav	/datazfs/audio_data/OpenSLR/resources/68/wav/train/14_3466/14_3466_20170826171549.wav
