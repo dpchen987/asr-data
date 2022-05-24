@@ -17,15 +17,25 @@ def save_list(list_data, file_path):
             f.write(line)
 
 
+def is_float(t):
+    return re.match(r'^[\d.]+$', t)
+
+
 def read_list(fiel_path):
     items = []
     with open(fiel_path) as f:
         for line in f:
             zz = line.strip().split('\t')
-            item = [int(zz[0])]
-            if len(zz) == 2:
-                item.append(zz[1])
-            else:
+            item = []
+            for z in zz:
+                if z.isdigit():
+                    item.append(int(z))
+                    continue
+                if is_float(z):
+                    item.append(float(z))
+                    continue
+                item.append(z)
+            if len(zz) == 1:
                 item.append('')
             items.append(item)
     return items
