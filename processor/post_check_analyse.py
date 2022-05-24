@@ -120,7 +120,7 @@ def compare(unchecked, checked):
                 good.append(deleted)
     good = ''.join(good)
     print(checked, '==>', good, '==>', unchecked)
-    ratio = Levenshtein.ratio(unchecked, good)
+    ratio = Levenshtein.ratio(unchecked, good) * 100
     return ratio, good
 
 def process(fp_checked):
@@ -186,11 +186,11 @@ def main(in_dir):
 
 
 if __name__ == '__main__':
-    checked = '电话那<is>腾</is>头儿子<del>好<is>安</is>一<is>散</is>时松了一口<is>口</is>气'
-    unchecked = '电话那头儿子安好庞阿姨暂时松了一口气'
-    r, good = compare(unchecked, checked)
-    print(r)
-    print(good)
-    # from sys import argv
-    # in_dir = argv[1]
-    # main(in_dir)
+    # checked = '电话那<is>腾</is>头儿子<del>好<is>安</is>一<is>散</is>时松了一口<is>口</is>气'
+    # unchecked = '电话那头儿子安好庞阿姨暂时松了一口气'
+    # r, good = compare(unchecked, checked)
+    # print(r)
+    # print(good)
+    from sys import argv
+    in_dir = argv[1]
+    main(in_dir)
