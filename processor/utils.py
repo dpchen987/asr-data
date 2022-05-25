@@ -21,9 +21,9 @@ def is_float(t):
     return re.match(r'^[\d.]+$', t)
 
 
-def read_list(fiel_path):
+def read_list(file_path):
     items = []
-    with open(fiel_path) as f:
+    with open(file_path) as f:
         for line in f:
             zz = line.strip().split('\t')
             item = []
