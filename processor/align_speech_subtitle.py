@@ -9,6 +9,36 @@ from utils import calc_similary, read_list, save_list
 SIM_THRESH = 0.8
 
 
+def merge_tail_head(a, b):
+    ''' a' tail equal to b's head '''
+    min_len = 5
+    if len(b) < min_len:
+        return ''
+    head = b[:min_len]
+    pos = a.rfind(head)
+    if pos < 0:
+        return ''
+    pos += min_len
+    same_len = min_len
+    # print(f'{pos=}, {same_len=}, {a=}, {b=}')
+    while pos < len(a) and same_len < len(b):
+        if b[same_len] != a[pos]:
+            break
+        same_len += 1
+        pos += 1
+    print(f'{len(a)=}, {pos=}')
+    if len(a) - pos > 1:
+        # a's tail has differenct 1 chr
+        return ''
+    print('same_len=', same_len, b[:same_len])
+    merged = a + b[same_len:]
+    print(f'{merged=}')
+    print(f'{a=}')
+    print(f'{b=}')
+    print('=='*10)
+    return merged
+
+
 def align_them(speeches, subtitles):
     ''' raw subtitles: [(timestamp, text), ...]
     '''
@@ -19,13 +49,12 @@ def align_them(speeches, subtitles):
     bads = []
     i = 0  # index of speeches
     j = 0  # index of subtitles
-    #print(f'{ len(speeches) = }')
     for i, spch in enumerate(speeches):
         speech_start, speech_end = spch
         if speech_start < skip_start:
             continue
         if speech_start > skip_end:
-            continue
+            break
         # 先跳到跟本段语音重合的字幕
         while j < len(subtitles):
             if speech_start <= int(subtitles[j][0]):
@@ -105,9 +134,7 @@ def align_merge(timeline):
                 # print('\t', timeline[i])
                 goods[-1][1] = timeline[i][1]
                 goods[-1][2] = t_this
-            else:
-                goods.append(timeline[i])
-            continue
+                continue
         # rule-3:
         # 1 abcdef
         # 2 def
@@ -119,9 +146,7 @@ def align_merge(timeline):
                 # print('\t', goods[-1])
                 # print('\t', timeline[i])
                 goods[-1][1] = timeline[i][1]
-            else:
-                goods.append(timeline[i])
-            continue
+                continue
         # rule-4:
         # 1 abcdef
         # 2 abcdxf
@@ -134,9 +159,29 @@ def align_merge(timeline):
             goods[-1][1] = timeline[i][1]
             if len(t_this) >= len(t_last):
                 goods[-1][2] = t_this
-        else:
-            goods.append(timeline[i])
+            continue
+        # rule-5:
+        # 1 abcdefgh
+        # 2 efghijkl
+        # 上一行的尾部和本行的头部重合5个字符以上，则合并两行，文本取合集
+        merged = merge_tail_head(t_last, t_this)
+        if merged:
+            goods[-1][1] = timeline[i][1]
+            goods[-1][2] = merged
+            continue
+        goods.append(timeline[i])
     return goods
+
+
+def filter_invalid(goods):
+    # rule-1: len(text) < 4 and duration > 1 seconds
+    new = []
+    for start, end, text in goods:
+        if len(text) < 4 and end-start > 1000:
+            print('=== filter_invalid ==', text, end-start)
+            continue
+        new.append([start, end, text])
+    return new
 
 
 def align_file(f_speech, f_subtitle, save_to):
@@ -146,9 +191,10 @@ def align_file(f_speech, f_subtitle, save_to):
     if not goods:
         return goods
     goods = align_merge(goods)
-    f_goods = save_to + '.goods'
+    goods = filter_invalid(goods)
+    f_goods = save_to + '-segments.goods'
     save_list(goods, f_goods)
-    f_bads = save_to + '.bads'
+    f_bads = save_to + '-segments.bads'
     save_list(bads, f_bads)
     return goods
 
@@ -187,10 +233,37 @@ def cut(audio_file, subtitles, save_format='wav'):
     return wav_scp, trans
 
 
+def save_scp_text(audio_file, subtitles):
+    '''subtitles: [(start, end, text), (start, end, text), ...]
+    start: start of audio segment in miliseconds
+    end: end of audio segment in miliseconds
+    '''
+    wav_scp = []
+    trans = []
+    segments = []
+    dirname = os.path.dirname(audio_file)
+    hashid = audio_file.split('/')[-1].split('.')[0]
+    for tl in subtitles:
+        start = tl[0] / 1000
+        end = tl[1] / 1000
+        text = tl[2]
+        utterance_id = f'{hashid}_{tl[0]}-{tl[1]}'
+        wav_scp.append(f'{utterance_id}\t{audio_file}\n')
+        trans.append(f'{utterance_id}\t{text}\n')
+        segments.append(f'{utterance_id}\t{utterance_id}\t{start}\t{end}\n')
+    f_wav_scp = os.path.join(dirname, f'{hashid}-wav_scp.txt')
+    with open(f_wav_scp, 'w') as f:
+        f.write(''.join(wav_scp))
+    f_trans = os.path.join(dirname, f'{hashid}-trans.txt')
+    with open(f_trans, 'w') as f:
+        f.write(''.join(trans))
+    f_segments = os.path.join(dirname, f'{hashid}-segments.txt')
+    with open(f_segments, 'w') as f:
+        f.write(''.join(segments))
+
+
 def align_all(worker, total):
     root_dir = '/aidata/audio/private/'
-    # f_wav_scp = open(f'{root_dir}/wav_scp.txt', 'w')
-    # f_trans = open(f'{root_dir}/trans.txt', 'w')
     suffix_speeches = '-speeches-raw.txt'
     suffix_subtitle = '-subtitle-raw.txt'
     counter = 0
@@ -215,18 +288,49 @@ def align_all(worker, total):
                 continue
             f_audio = f_speech.replace(suffix_speeches, '.opus')
             print(f'cutting {counter=}, {f_audio}')
+            # save_scp_text(f_audio, goods)
             wav_scp, trans = cut(f_audio, goods, 'wav')
-            # f_wav_scp.write(''.join(wav_scp))
-            # f_wav_scp.flush()
-            # f_trans.write(''.join(trans))
-            # f_trans.flush()
+
+
+def merge_wav_scp():
+    root_dir = '/aidata/audio/private/'
+    # f_wav_scp = open(f'{root_dir}/wav_scp.txt', 'w')
+    # f_trans = open(f'{root_dir}/trans.txt', 'w')
+    all_wav_scp = {}
+    all_trans = {}
+    for root, dirs, files in os.walk(root_dir):
+        for f in files:
+            if f.endswith('-trans.txt'):
+                fp = os.path.join(root, f)
+                with open(fp) as f:
+                    for l in f:
+                        zz = l.strip().split('\t')
+                        assert len(zz) == 2
+                        all_trans[zz[0]] = zz[1]
+                continue
+            if f.endswith('-wav_scp.txt'):
+                fp = os.path.join(root, f)
+                with open(fp) as f:
+                    for l in f:
+                        zz = l.strip().split('\t')
+                        assert len(zz) == 2
+                        all_wav_scp[zz[0]] = zz[1]
+                continue
+    print(f'{len(all_wav_scp)=}, {len(all_trans)=}')
+    with open(f'{root_dir}/wav_scp.txt', 'w') as f:
+        lines = [f'{k}\t{v}\n' for k, v in all_wav_scp.items()]
+        f.write(''.join(lines))
+    with open(f'{root_dir}/trans.txt', 'w') as f:
+        lines = [f'{k}\t{v}\n' for k, v in all_trans.items()]
+        f.write(''.join(lines))
 
 
 if __name__ == '__main__':
-    import sys
-    worker = int(sys.argv[1])
-    total = int(sys.argv[2])
-    align_all(worker, total)
+    # import sys
+    # worker = int(sys.argv[1])
+    # total = int(sys.argv[2])
+    # align_all(worker, total)
+    merge_wav_scp()
     # fs = sys.argv[1]
     # ft = sys.argv[2]
     # save_to = 'zznew'
