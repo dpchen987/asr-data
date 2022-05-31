@@ -8,7 +8,7 @@ import time
 
 PER_COUNT = 256
 DEPTH = 2
-AUDIO_FORMAT = 'opus'
+AUDIO_FORMAT = 'mp3'
 
 
 def gen_subdirs(hashnum, per_count, depth):
@@ -19,7 +19,7 @@ def gen_subdirs(hashnum, per_count, depth):
     # count: 文件的层数
 
     digit = hashnum.zfill(20)                       # 将hashnumber变成长度为20的string
-    cut_len = 20 // depth 
+    cut_len = 20 // depth
     if 20 % depth != 0:
         cut_len += 1
     parts = [digit[i:i+cut_len] for i in range(0, 20, cut_len)]
@@ -72,11 +72,11 @@ def main():
         hashnum = path.split('/')[-1].replace('.mp4', '')
         if not hashnum.isdigit():
             print('invalid hashnum: ', hashnum, '\n')
-            continue 
+            continue
         ihash = int(hashnum)
         if ihash % total != myid:
-            continue 
+            continue
         process(path, audio_root)
-        
+
 if __name__ == '__main__':
     main()
