@@ -3,9 +3,23 @@
 import os
 import re
 import difflib
+import farmhash
 
 
-differ = difflib.SequenceMatcher(isjunk=lambda x: x==' ')
+differ = difflib.SequenceMatcher(isjunk=lambda x: x == ' ')
+
+
+def get_hashid(path, is_name_hash=True):
+    name = path.split('/')[-1].split('.')[0]
+    if is_name_hash:
+        return int(name)
+    hashid = farmhash.hash64(path)
+    return hashid
+
+
+def get_name(path):
+    name = path.split('/')[-1].rsplit('.', maxsplit=1)[0]
+    return name
 
 
 def save_list(list_data, file_path):
@@ -56,7 +70,9 @@ def calc_similary(t1, t2):
     return differ.ratio()
 
 
-def get_audio(video_path, audio_path, channel=1, samplerate=48000, bitrate=32000):
+def get_audio(
+        video_path, audio_path,
+        channel=1, samplerate=48000, bitrate=32000):
     args = [
         f'-ac {channel}',
         f'-ar {samplerate}',

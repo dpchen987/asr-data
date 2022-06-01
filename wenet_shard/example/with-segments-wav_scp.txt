@@ -1,0 +1,10 @@
+L_R004S06C01-001-M-0000373-0000480	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-002-M-0000495-0000571	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-003-M-0000564-0000638	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-004-M-0000615-0000704	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-005-F-0000688-0000770	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-006-F-0000765-0000838	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-007-M-0000822-0000907	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-001-M-0001149-0002076	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-001-M-0002076-0002687	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac
+L_R004S06C01-001-M-0002688-0003792	/aidata/audio/public/OpenSLR/resources/111/test/wav/L_R004S06C01.flac

@@ -37,7 +37,7 @@ def split(path_text, path_wav_scp, slice_dir, count=40):
 
 def main(path_text, path_wav_scp):
     from pprint import pprint
-    slice_dir = 'slice_dir'
+    slice_dir = 'slice_dir2'
     slice_files = []
     for root, dirs, files in os.walk(slice_dir):
         for f in files:
@@ -50,9 +50,9 @@ def main(path_text, path_wav_scp):
                 assert os.path.exists(fw)
                 slice_files.append((ft, fw))
     pprint(slice_files)
-    if not slice_files:
-        print('==== split files ======')
-        slice_files = split(path_text, path_wav_scp, slice_dir)
+    # if not slice_files:
+    #     print('==== split files ======')
+    #     slice_files = split(path_text, path_wav_scp, slice_dir)
     pp = []
     for ft, fw in slice_files:
         p = Process(target=check, args=(ft, fw))

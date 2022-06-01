@@ -261,6 +261,11 @@ if __name__ == '__main__':
     r, good = compare2(unchecked, checked)
     print(r)
     print(good)
+    # checked = '电话那<is>腾</is>头儿子<del>好<is>安</is>一<is>散</is>时松了一口<is>口</is>气'
+    # unchecked = '电话那头儿子安好庞阿姨暂时松了一口气'
+    # r, good = compare(unchecked, checked)
+    # print(r)
+    # print(good)
     from sys import argv
     in_dir = argv[1]
     main(in_dir)
