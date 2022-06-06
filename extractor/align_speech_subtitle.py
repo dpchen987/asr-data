@@ -8,7 +8,7 @@ SIM_THRESH = 0.8
 
 def merge_tail_head(a, b):
     ''' a' tail equal to b's head '''
-    min_len = 5
+    min_len = 4
     if len(b) < min_len:
         return ''
     head = b[:min_len]
@@ -40,8 +40,8 @@ def align_them(speeches, subtitles):
     ''' raw subtitles: [(timestamp, text), ...]
     '''
     # 掐头去尾，语音范围内的字幕都一样，则语音和字幕为good，否则bad
-    skip_start = 1*60*1000  # milliseconds
-    skip_end = speeches[-1][0] - 3*60*1000  # milliseconds
+    skip_start = 0.2*60*1000  # milliseconds
+    skip_end = speeches[-1][0] - 2*60*1000  # milliseconds
     goods = []
     bads = []
     i = 0  # index of speeches
