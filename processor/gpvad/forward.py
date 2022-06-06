@@ -185,7 +185,7 @@ def extract_feature_mem(wav, sr):
 
 
 class GPVAD:
-    def __init__(self, model_name) -> None:
+    def __init__(self, model_name='a2_v2') -> None:
         assert model_name in ['sre', 'a2_v2']
         root_dir = os.path.dirname(os.path.abspath(__file__))
         if model_name == 'sre':
