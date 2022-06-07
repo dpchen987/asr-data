@@ -19,10 +19,6 @@ LMS_ARGS = {
     'hop_length': int(SAMPLE_RATE * 0.02),
     'win_length': int(SAMPLE_RATE * 0.04)
 }
-DEVICE = 'cpu'
-if torch.cuda.is_available():
-    DEVICE = 'cuda'
-DEVICE = torch.device(DEVICE)
 
 
 def find_contiguous_regions(activity_array):
@@ -189,13 +185,17 @@ def extract_feature_mem(wav, sr):
 
 
 class GPVAD:
-    def __init__(self) -> None:
+    def __init__(self, model_name='a2_v2') -> None:
+        assert model_name in ['sre', 'a2_v2']
         root_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(root_dir, 'pretrained_models/sre/model.pth')
+        if model_name == 'sre':
+            model_path = os.path.join(root_dir, 'pretrained_models/sre/model.pth')
+        else:
+            model_path = os.path.join(root_dir, 'pretrained_models/audio2_vox2/model.pth')
         self.model = crnn(
             outputdim=2,
             pretrained_from=model_path
-        ).to(DEVICE).eval()
+        ).eval()
         # self.model = ipex.optimize(self.model)
         # self.model = mkldnn_utils.to_mkldnn(self.model)
         # self.model = torch.jit.script(self.model)
@@ -203,7 +203,7 @@ class GPVAD:
         self.model_resolution = 20  # miliseconds
         encoder_path = os.path.join(root_dir, 'labelencoders/vad.pth')
         self.encoder = torch.load(encoder_path)
-        self.threshold = (0.5, 0.1)
+        self.threshold = (0.3, 0.05)  # 更好的recall，论文推荐(0.5, 0.1)
         self.speech_label_idx = np.where('Speech' == self.encoder.classes_)[0].squeeze()
         self.postprocessing_method = double_threshold
 
@@ -222,17 +222,16 @@ class GPVAD:
         print(f'{feature.shape = }')
         output = []
         with torch.no_grad():
-            feature = torch.as_tensor(feature).to(DEVICE)
+            feature = torch.as_tensor(feature)
             #feature = feature.to_mkldnn()
             prediction_tag, prediction_time = self.model(feature)
-            prediction_tag = prediction_tag.to('cpu')
-            prediction_time = prediction_time.to('cpu')
             if prediction_time is not None:  # Some models do not predict timestamps
                 thresholded_prediction = self.postprocessing_method(
                     prediction_time, *self.threshold)
                 labelled_predictions = decode_with_timestamps(
                     self.encoder, thresholded_prediction)
                 for label, start, end in labelled_predictions[0]:
+                    print(label, start*self.model_resolution, end*self.model_resolution)
                     if label != 'Speech': continue
                     output.append([start*self.model_resolution, end*self.model_resolution])
         return output
@@ -242,14 +241,16 @@ if __name__ == "__main__":
     from sys import argv
     import time
     fn = argv[1]
-    pgvad = GPVAD()
+    pgvad = GPVAD('sre')
     b = time.time()
     oo = pgvad.vad(fn)
-    print('time:', time.time() - b)
+    print('time:', time.time() - b, len(oo))
+    with open('z-vad-ts.txt', 'w') as f:
+        ll = [f'{o[0]}\t{o[1]}\n' for o in oo]
+        f.write(''.join(ll))
     # b = time.time()
     # oo = pgvad.vad(fn)
     # print('time:', time.time() - b)
-    print(oo)
     # import soundfile as sf
     # from io import BytesIO
     # audio = open(fn, 'rb').read()

@@ -8,6 +8,7 @@ import Levenshtein
 from pypinyin import pinyin, Style
 import jieba
 
+jieba.add_word('那头')
 
 def read_file(fp, spliter):
     data = {}
@@ -123,6 +124,67 @@ def compare(unchecked, checked):
     ratio = Levenshtein.ratio(unchecked, good) * 100
     return ratio, good
 
+
+def compare2(unchecked, checked):
+    '''只检查<is>数量<=2的，可能有助于修正OCR的错误
+    '''
+    count_th = 2
+    parts = re.split(r'(<is>.*?</is>|<del>)' , checked)
+    if len(parts) == 1:
+        return 100, unchecked
+    unchecked = unchecked.replace(' ', '')
+    pp = [p for p in parts]  # if p[0] != '<']
+    parts_unchecked = re.split(f"({'|'.join(pp)})" , unchecked)
+    print(f'{parts=}')
+    print(f'{parts_unchecked=}')
+    # if len(parts) > count_th:
+    #     checked_text = re.sub(r'<[^>]*>', '', checked).replace(' ', '')
+    #     ratio = Levenshtein.ratio(checked_text, unchecked) * 100
+    #     return ratio, unchecked 
+    good = []
+    unchecked_i = 0
+    for i, p in enumerate(parts):
+        if p[0] != '<':
+            good.append(p)
+            continue
+        if p[:4] == '<is>':
+            chars = re.findall('<is>(.*?)</is>', p)[0]
+            unchecked_char = ''
+            if i > 0:
+                pos = unchecked.find(parts[i-1])
+                if pos > -1:
+                    unchecked_i = pos+len(parts[i-1])
+                    unchecked_char = unchecked[unchecked_i]
+            if not unchecked_char and i < len(parts) - 1:
+                pos = unchecked.find(parts[i+1])
+                if pos > -1:
+                    unchecked_i = pos - 1
+                    unchecked_char = unchecked[unchecked_i]
+            if chars == unchecked_char:
+                good.append(chars)
+            else:
+                py_chars = pinyin(chars, style=Style.NORMAL)
+                py_chars = '-'.join([p[0] for p in py_chars])
+                py_unchecked_char = pinyin(unchecked_char, style=Style.NORMAL)
+                py_unchecked_char = '-'.join([p[0] for p in py_unchecked_char])
+                if py_chars == py_unchecked_char:
+                    good.append(unchecked_char)
+        if p[:5] == '<del>':
+            if i > 0:
+                pos = unchecked.find(parts[i-1])
+                if pos > -1:
+                    good.append(unchecked[pos+len(parts[i-1])])
+            if i < len(parts) - 1:
+                pos = unchecked.find(parts[i+1])
+                if pos > -1:
+                    good.append(unchecked[pos-1])
+
+    good = ''.join(good)
+    print(checked, '==>', good, '==>', unchecked)
+    ratio = Levenshtein.ratio(unchecked, good) * 100
+    return ratio, good
+
+
 def process(fp_checked):
     '''比较校对和未校对的相似度'''
     unchecked = fp_checked.replace('.checked-lable', '')
@@ -146,7 +208,7 @@ def process(fp_checked):
         results[key] = []
 
     for wid, v in checked.items():
-        ratio, good = compare(unchecked[wid], v)
+        ratio, good = compare2(unchecked[wid], v)
         if len(good) < 2:
             continue
         for s in scopes:
@@ -186,6 +248,19 @@ def main(in_dir):
 
 
 if __name__ == '__main__':
+    checked = '电话那<is>腾</is>头儿子<del>好<is>安</is>一<is>散</is>时松了一口<is>口</is>气'
+    unchecked = '电话那头儿子安好庞阿姨暂时松了一口气'
+    # unchecked = '所以基本上我觉得这样啊如果他要做这个职业'
+    # checked = '所以基本上我觉得这样<is>好</is>如果他要做这个职业'
+    unchecked = '当时这名举报者小王向惠州警方透露一个星期前他在朋友介绍下去了当地一个刚开起来的地下赌场玩'
+    checked = '当时<is>请</is>举报者小王向惠州警方透露一个星期前他在朋友<is>就</is>介绍下去了当地一个<del>开起来的地下赌场玩'
+    unchecked = '没提过心里舒服吗'
+    checked = '没<is>停</is>心里舒服吗'
+    unchecked = '角管你怎么激我我也不会'
+    checked = '<is>甭</is>管你怎么激我我也不会'
+    r, good = compare2(unchecked, checked)
+    print(r)
+    print(good)
     # checked = '电话那<is>腾</is>头儿子<del>好<is>安</is>一<is>散</is>时松了一口<is>口</is>气'
     # unchecked = '电话那头儿子安好庞阿姨暂时松了一口气'
     # r, good = compare(unchecked, checked)
