@@ -9,7 +9,7 @@ import cv2
 from utils import text_normalize, calc_similary
 
 
-CROP_HEIGHT_RATIO = 0.75
+CROP_HEIGHT_RATIO = 0.6
 SIM_THRESH = 0.80  # 对OCR容错
 too_small_thresh = 20
 OCR = None
@@ -30,11 +30,11 @@ def small_it(frame,):
     # return frame, 1, 0
     height, width, _ = frame.shape
     # 截取下面部分检测字幕
-    start_x = int(height * CROP_HEIGHT_RATIO)
-    end_x = height
-    start_y = 0
-    end_y = width
-    resized = frame[start_x:end_x, start_y:end_y]
+    start_y = int(height * CROP_HEIGHT_RATIO)
+    end_y = height
+    start_x = 0
+    end_x = width
+    resized = frame[start_y:end_y, start_x:end_x]
     return resized
 
 
@@ -122,7 +122,11 @@ def detect_subtitle(frame_origin):
     result = []
     for b in boxes:
         sub_side = calc_side(b, frame_resized)
+        sub_width = b[1][0] - b[0][0]
         sub_font_height = b[3][1] - b[0][1]
+        if sub_width < sub_font_height * 2:
+            # skip less than 2 char
+            continue
         result.append({
             'sub_box': b,
             'sub_side': sub_side,
@@ -295,7 +299,7 @@ def extract_subtitle_raw(video_path):
             break
         i += 1
         current = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-        if i % skip_frame != 1:
+        if i % skip_frame != 0:
             buffer.append((current, frame))
             continue
         print(f'frame: {i}')
@@ -350,9 +354,14 @@ if __name__ == '__main__':
         fn = argv[2]
         img = cv2.imread(fn)
         b = time.time()
-        text = OCR.ocr(img, det=True, rec=True, cls=False)
-        print('recognize:', time.time() - b, text)
-        print(text)
+        init()
+        box = detect_subtitle(img)
+        for b in box:
+            print(b)
+            im = crop_origin_sub(b['sub_box'], CROP_HEIGHT_RATIO, img)
+            texts = OCR.ocr(im, det=False, rec=True, cls=False)
+            texts = [t[0] for t in texts]
+            print(''.join(texts), '\n\n')
     elif opt == 'ext':
         vp = argv[2]
         save_dir = '.'
