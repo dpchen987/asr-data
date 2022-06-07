@@ -272,10 +272,10 @@ def extract_subtitle_raw(video_path):
         frame_exists, frame = cap.read()
         if not frame_exists:
             break
-        i += 1
-        if i % 1500 == 1:
+        if i % 1500 == 0:
             print(f'===frame: {i} @skip_frame:{skip_frame}, fps: {fps}', time.ctime())
-        if i % skip_frame != 1:
+        i += 1
+        if i % skip_frame != 0:
             continue
         subs = detect_subtitle(frame)
         current = int(cap.get(cv2.CAP_PROP_POS_MSEC))
