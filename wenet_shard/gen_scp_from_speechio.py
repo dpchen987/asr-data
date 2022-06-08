@@ -10,12 +10,13 @@ import random
 import os
 
 
-def main(each_count=0):
-    subs = os.listdir('./datasets/')
+def main(data_dir, each_count, save_name):
+    # _dir : path-to-Leaderboard/datasets
+    subs = os.listdir(data_dir)
     result = []
     for s in subs:
-        if s.startswith('SPEECHIO'):  # or s.startswith('AISHELL'):
-            meta = os.path.join('./datasets/', s, 'metadata.tsv')
+        if s.startswith('SPEECHIO') or s.startswith('AISHELL'):
+            meta = os.path.join(data_dir, s, 'metadata.tsv')
             lines = open(meta).readlines()
             dirname = os.path.dirname(os.path.abspath(meta))
             if each_count:
@@ -25,8 +26,8 @@ def main(each_count=0):
                 zz = lines
             zz = [(dirname, z) for z in zz]
             result.extend(zz)
-    scp = open(f'z-wav_scp-{each_count}.txt', 'w')
-    trans = open(f'z-trans-{each_count}.txt', 'w')
+    scp = open(f'{save_name}-{each_count}-wav_scp.txt', 'w')
+    trans = open(f'{save_name}-{each_count}-trans.txt', 'w')
     has = set()
     for dirname, l in result:
         zz = l.strip().split()
@@ -45,7 +46,11 @@ def main(each_count=0):
 
 
 if __name__ == '__main__':
-    import sys
-    each_count = int(sys.argv[1])
-    main(each_count)
+    import argparse
+    parser = argparse.ArgumentParser(description='select data for test-set')
+    parser.add_argument('--count', type=int, required=True, help="select count from each set")
+    parser.add_argument('--dir', required=True, help="dir to Leaderboard/datasets")
+    parser.add_argument('--save', required=True, help="file path of wav_scp to save")
+    args = parser.parse_args()
+    main(args.dir, args.count, args.save)
 
