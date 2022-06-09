@@ -29,7 +29,7 @@ def merge_speeches(speeches):
     return merged
 
 
-def extract_speech(video_path, save_dir, audio_format='opus'):
+def extract_speech(video_path, save_dir, audio_format='mp3'):
     audio_name = video_path.split('/')[-1].replace('mp4', audio_format)
     audio_path = os.path.join(save_dir, audio_name)
     get_audio(video_path, audio_path)
