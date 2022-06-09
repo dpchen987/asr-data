@@ -57,8 +57,8 @@ def main():
     myid = int(argv[1])
     total = int(argv[2])
     paths = []
-    _dir = '/aidata/video'
-    audio_root = '/aidata/audio/private'
+    _dir = '/aidata/video/电视剧2'
+    audio_root = '/aidata/audio/private2'
     time_threshold = time.time() - 10*60
     for root, dirs, files in os.walk(_dir):
         for f in files:
