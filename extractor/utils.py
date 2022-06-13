@@ -94,6 +94,26 @@ def get_audio(
     os.system(cmd)
 
 
+def gen_subdirs(hashid, per_count, depth):
+    # 由于hashidber最大不会超过2**64，所以一定小于20位。
+    # 那么首先在hashidber前添加0使其变为长度为20的string，然后根据count把string切成等长的sub-string。
+    # 使用levels作为除数，用substring/levels得到的余数作为每层的文件命名
+    # levels: 除数
+    # count: 文件的层数
+
+    digit = str(hashid).zfill(20)  # 将hashidber变成长度为20的string
+    cut_len = 20 // depth
+    if 20 % depth != 0:
+        cut_len += 1
+    parts = [digit[i:i+cut_len] for i in range(0, 20, cut_len)]
+    print(parts)
+    subdirs = []
+    sub_name_len = len(str(per_count))
+    for i in parts:
+        subdir = int(i) % per_count
+        subdirs.append(f'{subdir:0{sub_name_len}d}')
+    return subdirs
+
 
 if __name__ == '__main__':
     from sys import argv
@@ -102,6 +122,9 @@ if __name__ == '__main__':
         video_path = argv[2]
         audio_path = argv[3]
         get_audio(video_path, audio_path)
+    elif opt == 'sub':
+        ss = gen_subdirs(12826004460303937411, 256, 2)
+        print('/'.join(ss))
     elif opt == 'nor':
         a = 'a:，。,+\\、'
         n = text_normalize(a)
