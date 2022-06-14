@@ -317,7 +317,6 @@ def extract_subtitle_raw(video_path):
                 else:
                     texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
                     texts = [t[0] for t in texts if t[1] > 0.6]
-                    print(texts)
                     text = text_normalize(''.join(texts))
         if not text and i == 1:
             continue

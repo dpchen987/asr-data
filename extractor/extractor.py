@@ -66,7 +66,7 @@ def timeline_to_scp(audio_file, timeline):
         f.write(''.join(segments))
 
 
-def extract(video_path, save_dir, audio_format, cut=False):
+def extract(video_path, save_dir, audio_format, cut, args):
     # 1: extract speech
     speeches, audio_path = extract_speech(video_path, save_dir, audio_format)
     video_name = utils.get_name(video_path)
@@ -77,7 +77,7 @@ def extract(video_path, save_dir, audio_format, cut=False):
     path_subtitle = os.path.join(save_dir, f'{video_name}-subtitles-raw.txt')
     utils.save_list(subtitles, path_subtitle)
     # 3: align speech and subtitle
-    timeline = align.align(speeches, subtitles)
+    timeline = align.align(speeches, subtitles, args.skip_start, args.skip_end)
     path_timeline = os.path.join(save_dir, f'{video_name}-timeline.txt')
     utils.save_list(timeline, path_timeline)
     # 4: convert timeline to wav_scp and trans text
