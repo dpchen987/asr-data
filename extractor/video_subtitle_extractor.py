@@ -213,8 +213,8 @@ def find_subtitle_area(areas):
                         (abs(a[2]-b[2]) < a[2]*0.3))
             elif b[-1] == 'middle':
                 # 居中，则中点变化不大
-                middle_a = (a[3] - a[0]) / 2
-                middle_b = (b[3] - b[0]) / 2
+                middle_a = (a[3] + a[0]) / 2
+                middle_b = (b[3] + b[0]) / 2
                 near_by = ((abs(middle_a-middle_b) < half_height) and
                         (abs(a[1]-b[1]) < half_height) and
                         (abs(a[2]-b[2]) < a[2]*0.3))
