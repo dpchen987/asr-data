@@ -9,7 +9,7 @@ import cv2
 from utils import text_normalize, calc_similary
 
 
-CROP_HEIGHT_RATIO = 0.6
+CROP_HEIGHT_RATIO = 0.75
 SIM_THRESH = 0.80  # 对OCR容错
 too_small_thresh = 20
 OCR = None
@@ -55,17 +55,14 @@ def calc_side(box, frame):
 
 
 def crop_origin_sub(box, crop_height_ratio, frame_origin):
-    # print('---:', box)
     top_left, top_right, bottom_right, bottom_left = box
     crop_offset = int(frame_origin.shape[0] * crop_height_ratio)
-    # opencv 的坐标是高宽：（0,0）：左上角，x：向下(高度), y: 向右(宽度)
-    # OpenCV的xy是paddleOCR box的y,x， 故如下进行crop
-    startY, endY = int((top_left[0] - 1)), int((top_right[0] + 1))
-    startX, endX = int((top_left[1] - 1)), int((bottom_left[1] + 1))
-    startX += crop_offset
-    endX += crop_offset
+    startX, endX = int((top_left[0] - 1)), int((top_right[0] + 1))
+    startY, endY = int((top_left[1] - 1)), int((bottom_left[1] + 1))
+    startY += crop_offset
+    endY += crop_offset
     # print(startX, endX, startY, endY)
-    sub = frame_origin[startX:endX, startY:endY, :]
+    sub = frame_origin[startY:endY, startX:endX, :]
     return sub
 
 
@@ -172,7 +169,7 @@ def find_end_start(subtitles, buffer, sub_statistic):
                     text = ''
                 else:
                     texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
-                    texts = [t[0] for t in texts if t[1] > 0.8]
+                    texts = [t[0] for t in texts if t[1] > 0.6]
                     text = text_normalize(''.join(texts))
         if text != last_text:
             # go left
@@ -365,6 +362,8 @@ if __name__ == '__main__':
     elif opt == 'ext':
         vp = argv[2]
         save_dir = '.'
-        extract_subtitle(vp, save_dir)
+        subs = extract_subtitle(vp, save_dir)
+        import utils
+        utils.save_list(subs, 'z-ocr.txt')
     else:
         print('nothing')

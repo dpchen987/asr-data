@@ -241,11 +241,12 @@ if __name__ == "__main__":
     from sys import argv
     import time
     fn = argv[1]
-    pgvad = GPVAD('sre')
+    mtype = argv[2]
+    pgvad = GPVAD(mtype)
     b = time.time()
     oo = pgvad.vad(fn)
     print('time:', time.time() - b, len(oo))
-    with open('z-vad-ts.txt', 'w') as f:
+    with open(f'z-vad-ts-{mtype}.txt', 'w') as f:
         ll = [f'{o[0]}\t{o[1]}\n' for o in oo]
         f.write(''.join(ll))
     # b = time.time()
