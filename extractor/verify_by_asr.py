@@ -27,14 +27,14 @@ def choose(text_extract, text_asr):
         return text_asr, 99
     if text_asr in text_extract:
         # 语音不包含字幕的头或尾，以ASR为准
-        return text_extract, 100
+        return text_asr, 99
     distance = Levenshtein.distance(text_extract, text_asr)
     if distance < 3:
         words_extract = jieba.lcut(text_extract)
         words_asr = jieba.lcut(text_asr)
         if len(words_asr) >= len(words_extract):
-            return text_extract, 99
-        return text_asr, 99
+            return text_extract, 98
+        return text_asr, 98
     ratio = Levenshtein.ratio(text_extract, text_asr)
     return text_extract, ratio
 
