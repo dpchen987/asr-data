@@ -16,11 +16,11 @@ def process(video_path, hashid, audio_root):
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-        extract(video_path, save_dir, ARGS.audio_format, cut=ARGS.cut)
+        extract(video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
     else:
         wav_scp = f'{save_dir}/{hashid}-wav_scp.txt'
         if not os.path.exists(wav_scp):
-            extract(video_path, save_dir, ARGS.audio_format, cut=ARGS.cut)
+            extract(video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
         else:
             print('done: ', video_path)
 
@@ -37,6 +37,8 @@ def get_args():
     parser.add_argument('--subdir_depth', type=int, default=2, help='number of depth of subdirs')
     parser.add_argument('--audio_format', default='mp3', help='audio format for extracted speech file')
     parser.add_argument('--video_format', default='mp4', help='video format for extracting')
+    parser.add_argument('--skip_start', type=int, default=0, help='skip seconds at start')
+    parser.add_argument('--skip_end', type=int, default=0, help='skip seconds at end')
     args = parser.parse_args()
     return args
 

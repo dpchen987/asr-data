@@ -36,12 +36,13 @@ def merge_tail_head(a, b):
     return merged
 
 
-def align_them(speeches, subtitles):
+def align_them(speeches, subtitles, skip_start=0, skip_end=0):
     ''' raw subtitles: [(timestamp, text), ...]
+    skip_start, skip_end: (seconds)
+        掐头去尾，语音范围内的字幕都一样，则语音和字幕为good，否则bad
     '''
-    # 掐头去尾，语音范围内的字幕都一样，则语音和字幕为good，否则bad
-    skip_start = 0.2*60*1000  # milliseconds
-    skip_end = speeches[-1][0] - 2*60*1000  # milliseconds
+    skip_start = skip_start*1000  # milliseconds
+    skip_end = speeches[-1][0] - skip_end*1000  # milliseconds
     goods = []
     bads = []
     i = 0  # index of speeches
@@ -181,8 +182,8 @@ def filter_invalid(goods):
     return new
 
 
-def align(speeches, subtitles):
-    goods, bads = align_them(speeches, subtitles)
+def align(speeches, subtitles, skip_start, skip_end):
+    goods, bads = align_them(speeches, subtitles, skip_start, skip_end)
     if not goods:
         return goods
     timeline = align_merge(goods)
