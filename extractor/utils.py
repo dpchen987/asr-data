@@ -55,13 +55,11 @@ def read_list(file_path):
     return items
 
 
+P_CHARS = re.compile(r'[^0-9a-zA-Z\u4E00-\u9FA5]+')
+
+
 def text_normalize(text):
-    non_stop_puncs = (r'[＂＃＄％＆＇（）＊＋，。－／：；＜＝＞＠［＼］＾＿｀｛｜｝'
-                      r'～｟｠｢｣､、〃《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾'
-                      r'!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~'
-                      r'〿–—‘’‛“”„‟…‧﹏]+')
-    text = re.sub(non_stop_puncs, '', text)
-    return text
+    return P_CHARS.sub('', text)
 
 
 def calc_similary(t1, t2):
@@ -126,7 +124,7 @@ if __name__ == '__main__':
         ss = gen_subdirs(12826004460303937411, 256, 2)
         print('/'.join(ss))
     elif opt == 'nor':
-        a = 'a:，。,+\\、'
+        a = 'a:，。,+\\、b    c时代峰峻@？。～｟｠｢｣､、〃《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟'
         n = text_normalize(a)
         print(a)
         print(n)
