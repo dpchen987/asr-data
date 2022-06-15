@@ -231,7 +231,7 @@ class GPVAD:
                 labelled_predictions = decode_with_timestamps(
                     self.encoder, thresholded_prediction)
                 for label, start, end in labelled_predictions[0]:
-                    print(label, start*self.model_resolution, end*self.model_resolution)
+                    # print(label, start*self.model_resolution, end*self.model_resolution)
                     if label != 'Speech': continue
                     output.append([start*self.model_resolution, end*self.model_resolution])
         return output
