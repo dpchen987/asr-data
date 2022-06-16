@@ -23,6 +23,9 @@ def process(video_path, hashid, audio_root):
             extract(video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
         else:
             print('done: ', video_path)
+    if ARGS.delete_video:
+        print('!!!!!!!!!!!!!!!!! delete video:', video_path)
+        os.remove(video_path)
 
 
 def get_args():
@@ -31,7 +34,7 @@ def get_args():
     parser.add_argument('--extract_to_dir', required=True, help='dir to save extracted subtitle and speech')
     parser.add_argument('--run_id', type=int, default=0, help='id for this run, start from 0')
     parser.add_argument('--run_total', type=int, default=1, help='total runs for multi-process')
-    parser.add_argument('--video_name_hash', default=True, help='is video name if unique hash')
+    parser.add_argument('--video_name_hash', default=True, action='store_true', help='is video name if unique hash')
     parser.add_argument('--cut', default=False, action="store_true", help='whether to cut speech to utterance')
     parser.add_argument('--subdir_count', type=int, default=512, help='number of subdirs of extracte_to_dir')
     parser.add_argument('--subdir_depth', type=int, default=2, help='number of depth of subdirs')
@@ -39,6 +42,7 @@ def get_args():
     parser.add_argument('--video_format', default='mp4', help='video format for extracting')
     parser.add_argument('--skip_start', type=int, default=0, help='skip seconds at start')
     parser.add_argument('--skip_end', type=int, default=0, help='skip seconds at end')
+    parser.add_argument('--delete_video', action='store_true', default=False, help='skip seconds at end')
     args = parser.parse_args()
     return args
 
