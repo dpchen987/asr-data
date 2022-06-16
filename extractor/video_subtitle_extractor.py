@@ -19,11 +19,23 @@ def init():
     from paddleocr import PaddleOCR
     global OCR
     print(f'================== CPU:{os.cpu_count()} ================')
-    OCR = PaddleOCR(
-        lang='ch',
-        cpu_threads=8,  # 40 比默认的10 还慢一点点
-        enable_mkldnn=True,
-    )
+    # import GPUtil
+    # use_gpu = GPUtil.getGPUs()
+    import paddle
+    use_gpu = paddle.fluid.is_compiled_with_cuda()
+    if use_gpu:
+        print('================== PaddleOCR using GPU ================', use_gpu)
+        OCR = PaddleOCR(
+            lang='ch',
+            use_gpu=True,
+            gpu_mem=1000,
+        )
+    else:
+        OCR = PaddleOCR(
+            lang='ch',
+            cpu_threads=8,  # 40 比默认的10 还慢一点点
+            enable_mkldnn=True,
+        )
 
 
 def small_it(frame,):
