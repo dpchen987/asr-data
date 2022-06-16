@@ -56,9 +56,11 @@ def read_list(file_path):
 
 
 P_CHARS = re.compile(r'[^0-9a-zA-Z\u4E00-\u9FA5]+')
+P_NOTES = re.compile(r'[(（].*?[)）]')
 
 
 def text_normalize(text):
+    text = P_NOTES.sub('', text)  # 字幕中括号里面的文字往往是注释、补充，不是说的内容
     return P_CHARS.sub('', text)
 
 
