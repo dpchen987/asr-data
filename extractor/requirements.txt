@@ -4,9 +4,9 @@ librosa
 numpy
 opencv_contrib_python
 paddleocr
-paddlepaddle_gpu==2.3.0.post112
+# paddlepaddle_gpu==2.3.0.post112
 pyfarmhash
 python_Levenshtein
 scikit_learn==0.23.1
 SoundFile
-torch==1.11.0+cu113
+# torch==1.11.0+cu113
