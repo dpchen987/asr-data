@@ -1,4 +1,5 @@
 jieba
+soxr
 librosa
 numpy
 opencv_contrib_python
