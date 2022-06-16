@@ -19,6 +19,11 @@ LMS_ARGS = {
     'hop_length': int(SAMPLE_RATE * 0.02),
     'win_length': int(SAMPLE_RATE * 0.04)
 }
+DEVICE = 'cpu'
+if torch.cuda.is_available():
+    DEVICE = 'cuda'
+    print('================== VAD DEVICE: ', DEVICE)
+DEVICE = torch.device(DEVICE)
 
 
 def find_contiguous_regions(activity_array):
@@ -195,7 +200,7 @@ class GPVAD:
         self.model = crnn(
             outputdim=2,
             pretrained_from=model_path
-        ).eval()
+        ).to(DEVICE).eval()
         # self.model = ipex.optimize(self.model)
         # self.model = mkldnn_utils.to_mkldnn(self.model)
         # self.model = torch.jit.script(self.model)
@@ -222,9 +227,15 @@ class GPVAD:
         print(f'{feature.shape = }')
         output = []
         with torch.no_grad():
-            feature = torch.as_tensor(feature)
+            feature = torch.as_tensor(feature).to(DEVICE)
             #feature = feature.to_mkldnn()
+            b = time.time()
             prediction_tag, prediction_time = self.model(feature)
+            print('--------------- self.model() use time', time.time() - b)
+            prediction_tag = prediction_tag.to('cpu')
+            prediction_time = prediction_time.to('cpu')
+            torch.cuda.empty_cache()
+            print(type(prediction_tag))
             if prediction_time is not None:  # Some models do not predict timestamps
                 thresholded_prediction = self.postprocessing_method(
                     prediction_time, *self.threshold)
@@ -249,6 +260,11 @@ if __name__ == "__main__":
     with open(f'z-vad-ts-{mtype}.txt', 'w') as f:
         ll = [f'{o[0]}\t{o[1]}\n' for o in oo]
         f.write(''.join(ll))
+    z = input('>')
+    print('free gpu mem...')
+    torch.cuda.empty_cache()
+    z = input('>')
+    print(z)
     # b = time.time()
     # oo = pgvad.vad(fn)
     # print('time:', time.time() - b)
