@@ -74,7 +74,7 @@ def get_audio(
     args = [
         f'-ac {channel}',
         f'-ar {samplerate}',
-        f'-ab {bitrate}',
+        # f'-ab {bitrate}',
         '-y',
     ]
     supported_format = {
