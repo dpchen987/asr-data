@@ -201,13 +201,29 @@ def find_subtitle_area(areas):
         grouped.add(i)
         a = areas[i]
         group = [a]
+        half_height = a[2] * 0.5
         for j in range(i+1, len(areas)):
             if j in grouped:
                 continue
             b = areas[j]
-            if ((abs(a[0] - b[0]) < a[2]*0.5) and
-                (abs(a[1] - b[1]) < a[2]*0.5) and
-                (abs(a[2] - b[2]) < a[2]*0.3)):
+            if b[-1] == 'left':
+                # 居左，则起点变化不大
+                near_by = ((abs(a[0]-b[0]) < half_height) and
+                        (abs(a[1]-b[1]) < half_height) and
+                        (abs(a[2]-b[2]) < a[2]*0.3))
+            elif b[-1] == 'middle':
+                # 居中，则中点变化不大
+                middle_a = (a[3] - a[0]) / 2
+                middle_b = (b[3] - b[0]) / 2
+                near_by = ((abs(middle_a-middle_b) < half_height) and
+                        (abs(a[1]-b[1]) < half_height) and
+                        (abs(a[2]-b[2]) < a[2]*0.3))
+            else:
+                # 居右，则尾点变化不大
+                near_by = ((abs(a[3]-b[3]) < half_height) and
+                        (abs(a[1]-b[1]) < half_height) and
+                        (abs(a[2]-b[2]) < a[2]*0.3))
+            if near_by:
                 group.append(b)
                 grouped.add(j)
         groups.append(group)
@@ -329,7 +345,7 @@ def extract_subtitle_raw(video_path):
             find_end_start(subtitles, buffer, sub_statistic)
         elif calc_similary(text, subtitles[-1][1]) < SIM_THRESH:
             find_end_start(subtitles, buffer, sub_statistic)
-        # print(f'frame:{i=}, {current=}, {text=}')
+        print(f'frame:{i=}, {current=}, {text=}')
         subtitles.append((current, text))
         buffer.clear()
         last_frame_has_text = True
