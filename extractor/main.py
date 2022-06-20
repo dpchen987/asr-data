@@ -12,6 +12,7 @@ ARGS = None
 
 
 def process(video_path, hashid, audio_root):
+    print('extracting ', video_path)
     subdirs = utils.gen_subdirs(hashid, ARGS.subdir_count, ARGS.subdir_depth)
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
     if not os.path.exists(save_dir):
