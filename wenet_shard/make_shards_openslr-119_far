@@ -1,0 +1,16 @@
+#!/bin/bash
+shard_dir=/aidisk/audio/shards/openslr/119_far
+
+for datatype in Eval_Ali_far Test_Ali_far Train_Ali_far;
+do
+    trans=/aidata/audio/public/OpenSLR/resources/119/$datatype-trans.txt
+    wav_scp=/aidata/audio/public/OpenSLR/resources/119/$datatype-wav_scp.txt
+    segments=/aidata/audio/public/OpenSLR/resources/119/$datatype-segments.txt
+    trans_norm=$trans.norm
+    ./textnorm_zh.py --to_lower --has_key $trans $trans_norm
+    ./make_shard_list.py --resample 16000 --num_utts_per_shard 1000 --num_threads 32 \
+        --segments $segments \
+        $wav_scp $trans_norm \
+        $shard_dir/$datatype $shard_dir/$datatype-shards_list
+    cp $trans_norm $shard_dir/
+done
