@@ -1,0 +1,14 @@
+#!/bin/bash
+shard_dir=/aidisk/audio/shards/tts
+
+for datatype in train;
+do
+    trans=/aidata/audio/tts_data3/transcript/$datatype/tts_${datatype}_trans.txt
+    wav_scp=/aidata/audio/tts_data3/transcript/$datatype/tts_${datatype}_wav_scp.txt
+    trans_norm=$trans.norm
+    ./textnorm_zh.py --to_lower --has_key $trans $trans_norm
+    ./make_shard_list.py --resample 16000 --num_utts_per_shard 1000 --num_threads 32 \
+        $wav_scp $trans_norm \
+        $shard_dir/$datatype $shard_dir/$datatype-shards_list
+    cp $trans_norm $shard_dir/
+done
