@@ -98,6 +98,9 @@ def main():
                 print('skip not valid video file:', f)
                 continue
             path = os.path.join(root, f)
+            if not os.path.exists(path):
+                # has been delete by other process
+                continue
             if is_locked(path):
                 continue
             hashid = utils.get_hashid(path)
