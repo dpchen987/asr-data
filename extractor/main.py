@@ -7,6 +7,7 @@ import argparse
 
 import utils
 import extractor
+from logger import logger
 
 
 def is_locked(path):
@@ -26,7 +27,8 @@ def unlock_it(path):
 
 
 def process(video_path, hashid, audio_root, args):
-    print('extracting ', video_path)
+    logger.info(f'extracting: {video_path}')
+    b = time.time()
     lock_it(video_path)
     subdirs = utils.gen_subdirs(hashid, args.subdir_count, args.subdir_depth)
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
@@ -41,11 +43,13 @@ def process(video_path, hashid, audio_root, args):
             extractor.extract(
                     video_path, save_dir, args.audio_format, args.cut, args)
         else:
-            print('done: ', video_path)
+            logger.info('done: ', video_path)
     if args.delete_video:
-        print('!!!!!!!!!!!!!!!!! delete video:', video_path)
+        logger.info(f'!!!!!!!!!!!!!!!!! delete video: {video_path}')
         os.remove(video_path)
     unlock_it(video_path)
+    e = time.time(0)
+    logger.info(f'done extracting {video_path}, time cost:{e-b}')
 
 
 def get_args():
@@ -59,11 +63,19 @@ def get_args():
             help='dir to save extracted subtitle and speech')
     parser.add_argument(
             '--only_cut', default=False, action='store_true',
-            help='only cut audio to utterance'
-            )
+            help='only cut audio to utterance')
+    parser.add_argument(
+            '--mp', type=int, default=1,
+            help="number of processes for multiprocessing")
+    parser.add_argument(
+            '--run_forever', default=True, action='store_true',
+            help='run forever what if new video added')
     parser.add_argument(
             '--video_name_hash', default=True, action='store_true',
             help='is video name if unique hash')
+    parser.add_argument(
+            '--log_level', default='info',
+            help='set logging level, default is info')
     parser.add_argument(
             '--cut', default=False, action="store_true",
             help='whether to cut speech to utterance')
@@ -115,12 +127,12 @@ def only_cut(audio_dir, audio_format, save_format):
     print('cutting done')
 
 
-def work(args):
+def run(args):
     for root, dirs, files in os.walk(args.video_dir):
         for f in files:
             suffix = f.split('.')[-1]
             if suffix != args.video_format:
-                print('skip not valid video file:', f)
+                logger.warn(f'skip not valid video file: {f}')
                 continue
             path = os.path.join(root, f)
             if not os.path.exists(path):
@@ -130,36 +142,36 @@ def work(args):
                 continue
             hashid = utils.get_hashid(path)
             if not hashid:
-                print('invalid name:', path)
+                logger.error(f'invalid name: {path}')
                 continue
             process(path, hashid, args.extract_to_dir, args)
 
 
-def work_forever(args):
+def run_forever(args):
+    to_sleep = 10
     while 1:
-        work(args)
-        print('======== sleep to next work loop =========')
-        time.sleep(10)
+        run(args)
+        logger.info('======== sleep {to_sleep} to next run loop =========')
+        time.sleep(to_sleep)
 
 
 def main():
     args = get_args()
-    print(args)
+    print(f'{args=}')
     if args.only_cut:
         assert args.audio_dir
         only_cut(args.audio_dir, args.audio_format, 'wav')
-        print('cut done')
         return
-    if args.work_forever:
-        worker = work_forever
+    if args.run_forever:
+        runner = run_forever
     else:
-        worker = work
+        runner = run
     if args.mp < 2:
-        worker(args)
+        runner(args)
         return
     # multiprocessing
     from multiprocessing import Process
-    processes = [Process(target=worker, args=(args,)) for _ in range(args.mp)]
+    processes = [Process(target=runner, args=(args,)) for _ in range(args.mp)]
     for p in processes:
         p.start()
     for p in process:

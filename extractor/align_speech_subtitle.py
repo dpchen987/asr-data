@@ -3,6 +3,7 @@
 import re
 from collections import Counter
 from utils import calc_similary, read_list, save_list
+from logger import logger
 SIM_THRESH = 0.8
 
 
@@ -17,22 +18,21 @@ def merge_tail_head(a, b):
         return ''
     pos += min_len
     same_len = min_len
-    # print(f'{pos=}, {same_len=}, {a=}, {b=}')
     while pos < len(a) and same_len < len(b):
         if b[same_len] != a[pos]:
             break
         same_len += 1
         pos += 1
-    print(f'{len(a)=}, {pos=}')
+    logger.debug(f'{len(a)=}, {pos=}')
     if len(a) - pos > 1:
         # a's tail has differenct 1 chr
         return ''
-    print('same_len=', same_len, b[:same_len])
+    logger.debug('same_len=', same_len, b[:same_len])
     merged = a + b[same_len:]
-    print(f'{merged=}')
-    print(f'{a=}')
-    print(f'{b=}')
-    print('=='*10)
+    logger.debug(f'{merged=}')
+    logger.debug(f'{a=}')
+    logger.debug(f'{b=}')
+    logger.debug('=='*10)
     return merged
 
 
@@ -64,13 +64,11 @@ def align_them(speeches, subtitles, skip_start=0, skip_end=0):
         while j < len(subtitles):
             if speech_end < subtitles[j][0]:
                 break
-            # print(type(subtitles[j][1]), f'{subtitles[j][1]=}')
             text = re.sub(r'\s+', '', str(subtitles[j][1]))
             if text:
                 subs.append(text)
             j += 1
         if not subs:
-            # print('== no subtitle :', speech_start, speech_end, 'j=', j)
             bads.append([speech_start, speech_end, 'no-subtitle'])
             continue
 
@@ -127,9 +125,6 @@ def align_merge(timeline):
             sim = calc_similary(t_last, t_this[:len(t_last)])
             if sim > SIM_THRESH:
                 # merge
-                # print('xxxx merging xxxx')
-                # print('\t', goods[-1])
-                # print('\t', timeline[i])
                 goods[-1][1] = timeline[i][1]
                 goods[-1][2] = t_this
                 continue
@@ -140,9 +135,6 @@ def align_merge(timeline):
         if len(t_last) > len(t_this):
             sim = calc_similary(t_last[-len(t_this):], t_this)
             if sim > SIM_THRESH:
-                # print('xxxx merging xxxx')
-                # print('\t', goods[-1])
-                # print('\t', timeline[i])
                 goods[-1][1] = timeline[i][1]
                 continue
         # rule-4:
@@ -151,9 +143,6 @@ def align_merge(timeline):
         # 两行相似则合并，取最长或后面的文本
         sim = calc_similary(t_last, t_this)
         if sim > SIM_THRESH:
-            # print('xxxx merging xxxx')
-            # print('\t', goods[-1])
-            # print('\t', timeline[i])
             goods[-1][1] = timeline[i][1]
             if len(t_this) >= len(t_last):
                 goods[-1][2] = t_this
@@ -176,7 +165,7 @@ def filter_invalid(goods):
     new = []
     for start, end, text in goods:
         if len(text) < 4 and end-start > 1000:
-            print('=== filter_invalid ==', text, end-start)
+            logger.debug(f'=== filter_invalid == {text=}, {(end-start)=}')
             continue
         new.append([start, end, text])
     return new

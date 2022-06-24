@@ -7,6 +7,7 @@ from collections import Counter
 import numpy as np
 import cv2
 from utils import text_normalize, calc_similary
+from logger import logger
 
 
 CROP_HEIGHT_RATIO = 0.75
@@ -18,13 +19,13 @@ OCR = None
 def init():
     from paddleocr import PaddleOCR
     global OCR
-    print(f'================== CPU:{os.cpu_count()} ================')
+    logger.warn(f'================== CPU:{os.cpu_count()} ================')
     # import GPUtil
     # use_gpu = GPUtil.getGPUs()
     import paddle
     use_gpu = paddle.fluid.is_compiled_with_cuda()
     if use_gpu:
-        print('================== PaddleOCR using GPU ================', use_gpu)
+        logger.warn(f'=========== PaddleOCR using GPU {use_gpu} ============')
         OCR = PaddleOCR(
             lang='ch',
             use_gpu=True,
@@ -73,7 +74,6 @@ def crop_origin_sub(box, crop_height_ratio, frame_origin):
     startY, endY = int((top_left[1] - 1)), int((bottom_left[1] + 1))
     startY += crop_offset
     endY += crop_offset
-    # print(startX, endX, startY, endY)
     sub = frame_origin[startY:endY, startX:endX, :]
     return sub
 
@@ -83,18 +83,14 @@ def get_main_sub(subs, sub_statistic):
     delta = sub_statistic['sub_font_height'] * 0.5  # pixels
     for b in subs:
         if abs(b['sub_y_start'] - sub_statistic['sub_y_start']) > delta:
-            # print(f"{b['sub_y_position']=}, {sub_statistic['sub_y_position']=}, {delta=}")
             continue
         if abs(b['sub_font_height'] - sub_statistic['sub_font_height']) > delta:
-            # print(f"{b['sub_y_height']=}, {sub_statistic['sub_y_height']=}, {delta=}")
             continue
         if b['sub_side'] != sub_statistic['sub_side'] and b['sub_side'] != 'middle':
             continue
         candidates.append(b['sub_box'])
     if not candidates:
-        # print('\tno candidates of subs', len(subs))
         return None
-    # print('has candidates:', len(candidates))
     if len(candidates) == 1:
         box = candidates[0]
     else:
@@ -159,12 +155,8 @@ def find_end_start(subtitles, buffer, sub_statistic):
     else:
         # 第一帧, subtitles 还是空的
         last_text = ''
-    last_end = 0
-    current_start = 0
-    current_text = ''
     buffer_texts = []
     while 1:
-        #print(f'{pos=}', len(buffer))
         ts, frame = buffer[pos]
         subs = detect_subtitle(frame)
         if subs is None:
@@ -178,7 +170,8 @@ def find_end_start(subtitles, buffer, sub_statistic):
                     sub_box,
                     CROP_HEIGHT_RATIO,
                     frame)
-                if sub_img.shape[0] < too_small_thresh or sub_img.shape[1] < too_small_thresh:
+                if (sub_img.shape[0] < too_small_thresh or
+                        sub_img.shape[1] < too_small_thresh):
                     text = ''
                 else:
                     texts = OCR.ocr(sub_img, det=False, rec=True, cls=False)
@@ -189,18 +182,15 @@ def find_end_start(subtitles, buffer, sub_statistic):
             # go left
             right = pos
             pos = (left + right) // 2
-            current_start = ts
-            current_text = text
         else:
             # go right
             left = pos
             pos = (left + right) // 2
-            last_end = ts
         if pos == left or pos == right:
             break
     if buffer_texts:
-        buffer_texts.sort(key=lambda a:a[0])
-        print(buffer_texts)
+        buffer_texts.sort(key=lambda a: a[0])
+        logger.debug(f'{buffer_texts=}')
         subtitles.extend(buffer_texts)
 
 
@@ -264,14 +254,12 @@ def subtitle_statistic(main_frame_subtitles):
             continue
         for sub in v[1]:
             s = sub['sub_box']
-            # print(s, type(s))
             x_start, y_start = s[0]
             x_end = s[1][0]
             sub_side = sub['sub_side']
             areas.append((x_start, y_start, sub['sub_font_height'], x_end, k, sub_side))
     best = find_subtitle_area(areas)
     sides = [s[-1] for s in best]
-    print(sides)
     ct = Counter(sides)
     side = ct.most_common(1)[0][0]
     zz = [[b[0], b[1], b[2]] for b in best]
@@ -285,7 +273,6 @@ def subtitle_statistic(main_frame_subtitles):
 
 
 def extract_subtitle_raw(video_path):
-    print('start extracting...', video_path)
     cap = cv2.VideoCapture(video_path)
     main_frame_subtitles = {}  # {frame_id: (timestamp, None or [sub, sub, ...]), }
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -299,7 +286,8 @@ def extract_subtitle_raw(video_path):
         if not frame_exists:
             break
         if i % 1500 == 0:
-            print(f'===frame: {i} @skip_frame:{skip_frame}, fps: {fps}', time.ctime())
+            now = time.ctime()
+            logger.debug(f'===frame: {i} @{skip_frame=}, {fps=}, time: {now}')
         i += 1
         if i % skip_frame != 0:
             continue
@@ -308,8 +296,7 @@ def extract_subtitle_raw(video_path):
         main_frame_subtitles[i] = (current, subs)
     cap.release()
     sub_statistic = subtitle_statistic(main_frame_subtitles)
-    print('=== sub_statistic:', sub_statistic)
-    print(f'{len(main_frame_subtitles)=}')
+    logger.info(f'=== {sub_statistic=}')
     # 第二次遍历，识别skip frame，找到更精确的字幕开始结束时间
     buffer = []  # 缓存被skip掉的帧, [(timestamp, frame), ]
     subtitles = []  # [(timestamp, text), ]
@@ -326,7 +313,6 @@ def extract_subtitle_raw(video_path):
         if i % skip_frame != 0:
             buffer.append((current, frame))
             continue
-        # print(f'frame: {i}')
         ts, subs = main_frame_subtitles[i]
         if subs is None:
             text = ''
@@ -357,7 +343,7 @@ def extract_subtitle_raw(video_path):
             find_end_start(subtitles, buffer, sub_statistic)
         elif calc_similary(text, subtitles[-1][1]) < SIM_THRESH:
             find_end_start(subtitles, buffer, sub_statistic)
-        print(f'frame:{i=}, {current=}, {text=}')
+        logger.debug(f'frame:{i=}, {current=}, {text=}')
         subtitles.append((current, text))
         buffer.clear()
         last_frame_has_text = True
@@ -370,7 +356,7 @@ def extract_subtitle(video_path, save_dir):
         init()
     b = time.time()
     subtitles = extract_subtitle_raw(video_path)
-    print(f'done extract_subtitle: {video_path}, time cost:{time.time() - b}')
+    logger.info(f'done extract_subtitle: {video_path}, time:{time.time() - b}')
     return subtitles
 
 

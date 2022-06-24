@@ -1,12 +1,15 @@
 import os
+import time
 
 import utils
+from logger import logger
 
 VAD = None
 
 
 def extract_speech(video_path, save_dir, audio_format):
     global VAD
+    b = time.time()
     audio_name = utils.get_name(video_path)
     audio_path = os.path.join(save_dir, f'{audio_name}.{audio_format}')
     if not os.path.exists(audio_path):
@@ -16,7 +19,8 @@ def extract_speech(video_path, save_dir, audio_format):
         from gpvad.forward import GPVAD
         VAD = GPVAD()
     speeches = VAD.vad(audio_path)
-    print('done extract audio:', audio_path)
+    span = time.time() - b
+    logger.info(f'done extract audio: {audio_path}, time cost:{span}')
     return speeches, audio_path
 
 
