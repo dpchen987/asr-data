@@ -74,7 +74,7 @@ def calc_similary(t1, t2):
 
 def get_audio(
         video_path, audio_path,
-        channel=1, samplerate=48000, bitrate=32000):
+        channel=1, samplerate=48000, bitrate=32000, verbose=False):
     args = [
         f'-ac {channel}',
         f'-ar {samplerate}',
@@ -83,9 +83,12 @@ def get_audio(
     ]
     supported_format = {
         'wav': '-map_metadata -1 -fflags +bitexact -acodec pcm_s16le',
-        'opus': ' -f wav - | opusenc - ',
+        'opus': '-f wav - | opusenc - ',
         'mp3': '-acodec libmp3lame',
     }
+    if not verbose:
+        args.append('2>/dev/null')
+        supported_format['opus'] += ' 2>/dev/null'
     format = audio_path.split('.')[-1].lower()
     if format not in supported_format:
         raise ValueError(f'not supported audio format: {format}')
