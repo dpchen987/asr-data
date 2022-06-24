@@ -12,7 +12,9 @@ differ = difflib.SequenceMatcher(isjunk=lambda x: x == ' ')
 def get_hashid(path, is_name_hash=True):
     name = path.split('/')[-1].split('.')[0]
     if is_name_hash:
-        return int(name)
+        if name.isdigit():
+            return int(name)
+        return 0
     hashid = farmhash.hash64(path)
     return hashid
 

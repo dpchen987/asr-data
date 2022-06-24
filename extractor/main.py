@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # encoding:utf8
 
+import time
 import os
 import argparse
 
 import utils
 import extractor
-
-
-ARGS = None
 
 
 def is_locked(path):
@@ -27,24 +25,24 @@ def unlock_it(path):
     os.remove(locked)
 
 
-def process(video_path, hashid, audio_root):
+def process(video_path, hashid, audio_root, args):
     print('extracting ', video_path)
     lock_it(video_path)
-    subdirs = utils.gen_subdirs(hashid, ARGS.subdir_count, ARGS.subdir_depth)
+    subdirs = utils.gen_subdirs(hashid, args.subdir_count, args.subdir_depth)
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         extractor.extract(
                 video_path,
-                save_dir, ARGS.audio_format, ARGS.cut, ARGS)
+                save_dir, args.audio_format, args.cut, args)
     else:
         wav_scp = f'{save_dir}/{hashid}-wav_scp.txt'
         if not os.path.exists(wav_scp):
             extractor.extract(
-                    video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
+                    video_path, save_dir, args.audio_format, args.cut, args)
         else:
             print('done: ', video_path)
-    if ARGS.delete_video:
+    if args.delete_video:
         print('!!!!!!!!!!!!!!!!! delete video:', video_path)
         os.remove(video_path)
     unlock_it(video_path)
@@ -117,19 +115,11 @@ def only_cut(audio_dir, audio_format, save_format):
     print('cutting done')
 
 
-def main():
-    global ARGS
-    ARGS = get_args()
-    print(ARGS)
-    if ARGS.only_cut:
-        assert ARGS.audio_dir
-        only_cut(ARGS.audio_dir, ARGS.audio_format, 'wav')
-        print('cut done')
-        return
-    for root, dirs, files in os.walk(ARGS.video_dir):
+def work(args):
+    for root, dirs, files in os.walk(args.video_dir):
         for f in files:
             suffix = f.split('.')[-1]
-            if suffix != ARGS.video_format:
+            if suffix != args.video_format:
                 print('skip not valid video file:', f)
                 continue
             path = os.path.join(root, f)
@@ -139,7 +129,42 @@ def main():
             if is_locked(path):
                 continue
             hashid = utils.get_hashid(path)
-            process(path, hashid, ARGS.audio_dir)
+            if not hashid:
+                print('invalid name:', path)
+                continue
+            process(path, hashid, args.extract_to_dir, args)
+
+
+def work_forever(args):
+    while 1:
+        work(args)
+        print('======== sleep to next work loop =========')
+        time.sleep(10)
+
+
+def main():
+    args = get_args()
+    print(args)
+    if args.only_cut:
+        assert args.audio_dir
+        only_cut(args.audio_dir, args.audio_format, 'wav')
+        print('cut done')
+        return
+    if args.work_forever:
+        worker = work_forever
+    else:
+        worker = work
+    if args.mp < 2:
+        worker(args)
+        return
+    # multiprocessing
+    from multiprocessing import Process
+    processes = [Process(target=worker, args=(args,)) for _ in range(args.mp)]
+    for p in processes:
+        p.start()
+    for p in process:
+        p.join()
+    print('Bye :)')
 
 
 if __name__ == '__main__':
