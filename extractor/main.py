@@ -5,7 +5,7 @@ import os
 import argparse
 
 import utils
-from extractor import extract
+import extractor
 
 
 ARGS = None
@@ -34,11 +34,14 @@ def process(video_path, hashid, audio_root):
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-        extract(video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
+        extractor.extract(
+                video_path,
+                save_dir, ARGS.audio_format, ARGS.cut, ARGS)
     else:
         wav_scp = f'{save_dir}/{hashid}-wav_scp.txt'
         if not os.path.exists(wav_scp):
-            extract(video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
+            extractor.extract(
+                    video_path, save_dir, ARGS.audio_format, ARGS.cut, ARGS)
         else:
             print('done: ', video_path)
     if ARGS.delete_video:
@@ -51,11 +54,15 @@ def get_args():
     parser = argparse.ArgumentParser(
             description='extract subtitle and speech from vide')
     parser.add_argument(
-            '--video_dir', required=True,
+            '--video_dir',
             help='path to dir of video to be processed')
     parser.add_argument(
-            '--extract_to_dir', required=True,
+            '--audio_dir',
             help='dir to save extracted subtitle and speech')
+    parser.add_argument(
+            '--only_cut', default=False, action='store_true',
+            help='only cut audio to utterance'
+            )
     parser.add_argument(
             '--video_name_hash', default=True, action='store_true',
             help='is video name if unique hash')
@@ -87,10 +94,38 @@ def get_args():
     return args
 
 
+def only_cut(audio_dir, audio_format, save_format):
+    for root, dirs, files in os.walk(audio_dir):
+        for f in files:
+            if not f.endswith(audio_format):
+                continue
+            segment_dir = os.path.join(root, save_format)
+            fp_timeline = os.path.join(root, f.split('.')[0] + '-timeline.txt')
+            if not os.path.exists(fp_timeline):
+                print('no file', fp_timeline)
+                continue
+            timeline = utils.read_list(fp_timeline)
+            if os.path.exists(segment_dir):
+                print('has cut', f)
+                segs = os.listdir(segment_dir)
+                if len(segs) == len(timeline):
+                    continue
+                print('\tbut it seems only part of all', f'{len(segs)=}, {len(timeline)}')
+            audio_file = os.path.join(root, f)
+            print('cutting', audio_file)
+            extractor.timeline_to_scp_cut(audio_file, timeline, save_format)
+    print('cutting done')
+
+
 def main():
     global ARGS
     ARGS = get_args()
     print(ARGS)
+    if ARGS.only_cut:
+        assert ARGS.audio_dir
+        only_cut(ARGS.audio_dir, ARGS.audio_format, 'wav')
+        print('cut done')
+        return
     for root, dirs, files in os.walk(ARGS.video_dir):
         for f in files:
             suffix = f.split('.')[-1]
@@ -104,7 +139,7 @@ def main():
             if is_locked(path):
                 continue
             hashid = utils.get_hashid(path)
-            process(path, hashid, ARGS.extract_to_dir)
+            process(path, hashid, ARGS.audio_dir)
 
 
 if __name__ == '__main__':
