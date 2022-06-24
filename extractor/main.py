@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # encoding:utf8
 
+import time
 import os
 import argparse
 
@@ -87,10 +88,7 @@ def get_args():
     return args
 
 
-def main():
-    global ARGS
-    ARGS = get_args()
-    print(ARGS)
+def work():
     for root, dirs, files in os.walk(ARGS.video_dir):
         for f in files:
             suffix = f.split('.')[-1]
@@ -104,7 +102,20 @@ def main():
             if is_locked(path):
                 continue
             hashid = utils.get_hashid(path)
+            if not hashid:
+                print('invalid name:', path)
+                continue
             process(path, hashid, ARGS.extract_to_dir)
+
+
+def main():
+    global ARGS
+    ARGS = get_args()
+    print(ARGS)
+    while 1:
+        work()
+        print('======== sleep to next work loop =========')
+        time.sleep(10)
 
 
 if __name__ == '__main__':
