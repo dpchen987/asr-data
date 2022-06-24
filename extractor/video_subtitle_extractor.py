@@ -275,7 +275,7 @@ def subtitle_statistic(main_frame_subtitles):
 def extract_subtitle_raw(video_path):
     cap = cv2.VideoCapture(video_path)
     main_frame_subtitles = {}  # {frame_id: (timestamp, None or [sub, sub, ...]), }
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
     # 跳过n帧以加速提取，find_end()从跳过的帧中找到变化位置，
     # 但其假设是n帧中字幕只变化了一次，故n不能过大，否则会漏掉时间很短的字幕
     skip_frame = int(fps * 1.2)
@@ -287,7 +287,8 @@ def extract_subtitle_raw(video_path):
             break
         if i % 1500 == 0:
             now = time.ctime()
-            logger.debug(f'===frame: {i} @{skip_frame=}, {fps=}, time: {now}')
+            pid = os.getpid()
+            logger.info(f'==={pid=}, frame: {i} @{skip_frame=}, {fps=}, time: {now}')
         i += 1
         if i % skip_frame != 0:
             continue
