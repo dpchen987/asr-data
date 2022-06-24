@@ -48,7 +48,7 @@ def process(video_path, hashid, audio_root, args):
         logger.info(f'!!!!!!!!!!!!!!!!! delete video: {video_path}')
         os.remove(video_path)
     unlock_it(video_path)
-    e = time.time(0)
+    e = time.time()
     logger.info(f'done extracting {video_path}, time cost:{e-b}')
 
 
@@ -144,7 +144,7 @@ def run(args):
             if not hashid:
                 logger.error(f'invalid name: {path}')
                 continue
-            process(path, hashid, args.extract_to_dir, args)
+            process(path, hashid, args.audio_dir, args)
 
 
 def run_forever(args):
