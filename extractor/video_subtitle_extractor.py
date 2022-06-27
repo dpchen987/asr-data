@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 from utils import text_normalize, calc_similary
 from logger import logger
+from myprocessbar import MyProcessBar
 
 
 CROP_HEIGHT_RATIO = 0.75
@@ -276,10 +277,13 @@ def extract_subtitle_raw(video_path):
     cap = cv2.VideoCapture(video_path)
     main_frame_subtitles = {}  # {frame_id: (timestamp, None or [sub, sub, ...]), }
     fps = int(cap.get(cv2.CAP_PROP_FPS))
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     # 跳过n帧以加速提取，find_end()从跳过的帧中找到变化位置，
     # 但其假设是n帧中字幕只变化了一次，故n不能过大，否则会漏掉时间很短的字幕
     skip_frame = int(fps * 1.2)
     # 第一次遍历video，识别main_frame(非skipped)，然后统计出视频位置：left/middle/right, 高度、高度位置
+    pbar = MyProcessBar(total)
+    pid = os.getpid()
     i = 0
     while (cap.isOpened()):
         frame_exists, frame = cap.read()
@@ -287,14 +291,18 @@ def extract_subtitle_raw(video_path):
             break
         if i % 1500 == 0:
             now = time.ctime()
-            pid = os.getpid()
-            logger.info(f'==={pid=}, frame: {i} @{skip_frame=}, {fps=}, time: {now}')
+            # logger.info(f'==={pid=}, frame: {i} @{skip_frame=}, {fps=}, time: {now}')
+            prefix = f'{now},{pid=}'
+            pbar.show(i, prefix=prefix)
         i += 1
         if i % skip_frame != 0:
             continue
         subs = detect_subtitle(frame)
         current = int(cap.get(cv2.CAP_PROP_POS_MSEC))
         main_frame_subtitles[i] = (current, subs)
+    prefix = f'{time.ctime()},{pid=}'
+    pbar.show(i, prefix=prefix)
+    pbar.done()
     cap.release()
     sub_statistic = subtitle_statistic(main_frame_subtitles)
     logger.info(f'=== {sub_statistic=}')
