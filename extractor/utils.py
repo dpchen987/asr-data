@@ -9,6 +9,22 @@ import farmhash
 differ = difflib.SequenceMatcher(isjunk=lambda x: x == ' ')
 
 
+def is_locked(path):
+    locked = path + '.lock'
+    return os.path.exists(locked)
+
+
+def lock_it(path):
+    locked = path + '.lock'
+    with open(locked, 'w') as f:
+        f.write('locked')
+
+
+def unlock_it(path):
+    locked = path + '.lock'
+    os.remove(locked)
+
+
 def get_hashid(path, is_name_hash=True):
     name = path.split('/')[-1].split('.')[0]
     if is_name_hash:

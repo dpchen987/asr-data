@@ -10,26 +10,10 @@ import extractor
 from logger import logger
 
 
-def is_locked(path):
-    locked = path + '.lock'
-    return os.path.exists(locked)
-
-
-def lock_it(path):
-    locked = path + '.lock'
-    with open(locked, 'w') as f:
-        f.write('locked')
-
-
-def unlock_it(path):
-    locked = path + '.lock'
-    os.remove(locked)
-
-
 def process(video_path, hashid, audio_root, args):
     logger.info(f'extracting: {video_path}')
     b = time.time()
-    lock_it(video_path)
+    utils.lock_it(video_path)
     subdirs = utils.gen_subdirs(hashid, args.subdir_count, args.subdir_depth)
     save_dir = os.path.join(audio_root, *subdirs, str(hashid))
     if not os.path.exists(save_dir):
@@ -47,7 +31,7 @@ def process(video_path, hashid, audio_root, args):
     if args.delete_video:
         logger.info(f'!!!!!!!!!!!!!!!!! delete video: {video_path}')
         os.remove(video_path)
-    unlock_it(video_path)
+    utils.unlock_it(video_path)
     e = time.time()
     logger.info(f'done extracting {video_path}, time cost:{e-b}')
 
@@ -138,7 +122,7 @@ def run(args):
             if not os.path.exists(path):
                 # has been delete by other process
                 continue
-            if is_locked(path):
+            if utils.is_locked(path):
                 continue
             hashid = utils.get_hashid(path)
             if not hashid:
