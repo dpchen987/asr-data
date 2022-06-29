@@ -22,7 +22,10 @@ def lock_it(path):
 
 def unlock_it(path):
     locked = path + '.lock'
-    os.remove(locked)
+    try:
+        os.remove(locked)
+    except Exception as e:
+        print(f'unlock_it() Exception: {e}')
 
 
 def get_hashid(path, is_name_hash=True):
