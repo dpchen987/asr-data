@@ -7,18 +7,15 @@
 '''
 
 
-import jieba
+import os
 import Levenshtein
+from pypinyin import pinyin, Style
 from collections import defaultdict
-
-
-add_words = ['干什么', '女的']
-
-for w in add_words:
-    jieba.add_word(w)
+from textnorm_zh import text_norm
 
 
 def choose(text_extract, text_asr):
+    text_extract = text_norm(text_extract)
     # need more reasonable rules To Be Added
     if text_extract == text_asr:
         return text_extract, 100
@@ -28,13 +25,23 @@ def choose(text_extract, text_asr):
     if text_asr in text_extract:
         # 语音不包含字幕的头或尾，以ASR为准
         return text_asr, 99
-    distance = Levenshtein.distance(text_extract, text_asr)
-    if distance < 3:
-        words_extract = jieba.lcut(text_extract)
-        words_asr = jieba.lcut(text_asr)
-        if len(words_asr) >= len(words_extract):
-            return text_extract, 98
-        return text_asr, 98
+    # 看拼音
+    py_extract = pinyin(text_extract, Style.FIRST_LETTER)
+    py_extract = ''.join([a[0] for a in py_extract])
+    py_asr = pinyin(text_asr, Style.FIRST_LETTER)
+    py_asr = ''.join([a[0] for a in py_asr])
+    if py_extract == py_asr:
+        # 音相同，去字幕
+        print(f'same pinyin {text_extract=}, {text_asr=}')
+        return text_extract, 100
+    if py_extract in py_asr or py_asr in py_extract:
+        return text_asr, 99
+    distance = Levenshtein.distance(py_extract, py_asr)
+    ratio = Levenshtein.ratio(py_extract, py_asr)
+    if distance < 4 and ratio > 0.8:
+        # 有个问题：OCR识别错字，但ASR识别正确，如何取舍？
+        # 比如：’耍赖', OCR识别为'要赖'
+        return text_extract, 98
     ratio = Levenshtein.ratio(text_extract, text_asr)
     return text_extract, ratio
 
@@ -57,17 +64,27 @@ def read(fp):
     return tt
 
 
-def verify(f_extract, f_asr):
-    texts_extract = read(f_extract)
-    print(f'{len(texts_extract)=}')
+def verify(f_extract, f_asr, f_save):
     texts_asr = read(f_asr)
-    print(f'{len(texts_asr)=}')
+    if len(texts_asr) < 50:
+        print(f'too few speech in {f_asr}, skip it!')
+        return 0
+    texts_extract = read(f_extract)
     result = defaultdict(list)
+    duration_max = 60  # seconds
+    duration_total = 0
     for uttid, text in texts_extract.items():
         if uttid not in texts_asr:
             print('no asr', uttid)
             result['00'].append((uttid, text))
             continue
+        begin, end = uttid.split('_')[1].split('-')
+        duration = (int(end) - int(begin)) / 1000
+        if duration > duration_max:
+            # 模型最大支持的position encoding为5000，即200*(1000ms/40ms)
+            # print(f'too long speech: {duration=} > {duration_max=} seconds, {uttid}')
+            continue
+        duration_total += duration
         good, ratio = choose(text, texts_asr[uttid])
         if ratio == 100:
             result['100'].append((uttid, good))
@@ -80,12 +97,12 @@ def verify(f_extract, f_asr):
         else:
             result['xx'].append((uttid, good, text, texts_asr[uttid]))
     for k, v in result.items():
-        name = f'z-verify-{k}.txt'
+        name = f'{f_save}-{k}.txt'
         lines = ["\t".join(i) for i in v]
         with open(name, 'w') as f:
             f.write('\n'.join(lines))
             f.write('\n')
-    print('done')
+    return duration_total
 
 
 def split_data(f_verify_good, f_wav_scp):
@@ -134,20 +151,38 @@ def split_data(f_verify_good, f_wav_scp):
     print('done')
 
 
+def verify_dir(audio_dir):
+    duration_total = 0
+    for root, dirs, files in os.walk(audio_dir):
+        for f in files:
+            if not f.endswith('-asr-trans.txt'):
+                continue
+            f_extract = os.path.join(root, f.replace('-asr-trans.txt', '-trans.txt'))
+            assert os.path.exists(f_extract)
+            f_asr = os.path.join(root, f)
+            f_save = f_extract.rsplit('-', maxsplit=1)[0] + '-verified'
+            d = verify(f_extract, f_asr, f_save)
+            duration_total += d
+    print(f'done, {duration_total=}')
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="verify and split")
     parser.add_argument('cmd', choices=['verify', 'split'], help="verify or split")
+    parser.add_argument('--audio_dir', help='audio dir to be verified')
     parser.add_argument('--text_extract', help='text extraced for verify')
     parser.add_argument('--text_asr', help='text by asr for verify')
     parser.add_argument('--text', help='text for split')
     parser.add_argument('--scp', help='wav_scp for split')
     args = parser.parse_args()
     if args.cmd == 'verify':
-        verify(args.text_extract, args.text_asr)
+        if args.audio_dir:
+            verify_dir(args.audio_dir)
+        else:
+            verify(args.text_extract, args.text_asr)
     else:
         split_data(args.text, args.scp)
-
 
 
 if __name__ == '__main__':
