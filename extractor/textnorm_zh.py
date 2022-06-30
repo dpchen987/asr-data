@@ -813,6 +813,35 @@ def full_to_half_test():
     print(f'{success=}')
 
 
+def text_norm(text, to_upper=False, to_lower=False, remove_fillers=False, remove_erhua=False):
+    # cases
+    if to_upper:
+        text = text.upper()
+    if to_lower:
+        text = text.lower()
+
+    # Filler chars removal
+    if remove_fillers:
+        for ch in FILLER_CHARS:
+            text = text.replace(ch, '')
+
+    if remove_erhua:
+        text = remove_erhua(text, ER_WHITELIST)
+
+    # NSW(Non-Standard-Word) normalization
+    text = NSWNormalizer(text).normalize()
+
+    # Punctuations removal
+    old_chars = CHINESE_PUNC_LIST + string.punctuation  # includes all CN and EN punctuations
+    new_chars = ' ' * len(old_chars)
+    del_chars = ''
+    text = text.translate(str.maketrans(old_chars, new_chars, del_chars))
+
+    # full width alpha to half with
+    text = full_to_half(text)
+    return text
+
+
 if __name__ == '__main__':
     nsw_test()
     full_to_half_test()
