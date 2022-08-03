@@ -94,6 +94,7 @@ def calc_similary(t1, t2):
 def get_audio(
         video_path, audio_path,
         channel=1, samplerate=48000, bitrate=32000, verbose=False):
+    video_path = video_path.replace(' ', '\\ ')
     args = [
         f'-ac {channel}',
         f'-ar {samplerate}',
