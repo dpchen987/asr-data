@@ -166,10 +166,55 @@ def verify_dir(audio_dir):
     print(f'done, {duration_total=}')
 
 
+def merge(audio_dir):
+    def read_list(fp):
+        items = []
+        with open(fp) as f:
+            for ln in f:
+                zz = ln.strip().split('\t')
+                items.append(zz)
+        return items
+    duration_total = 0
+    lines_trans = []
+    lines_scps = []
+    for root, dirs, files in os.walk(audio_dir):
+        for f in files:
+            if not f.endswith('-asr-trans.txt'):
+                continue
+            names = [
+                f.replace('-asr-trans.txt', '-verified-100.txt'),
+                f.replace('-asr-trans.txt', '-verified-99.txt'),
+                f.replace('-asr-trans.txt', '-verified-96.txt'),
+                ]
+            f_wav_scp = os.path.join(root, f.replace('-asr-trans.txt', '-wav_scp.txt'))
+            wav_scps = read(f_wav_scp)
+            print(f'merging {f_wav_scp}, {len(wav_scps)=}')
+            for name in names:
+                fp = os.path.join(root, name)
+                if not os.path.exists(fp):
+                    print('\tno file', fp)
+                    continue
+                trans = read_list(fp)
+                for t in trans:
+                    uttid = t[0]
+                    begin, end = uttid.split('_')[1].split('-')
+                    duration = (int(end) - int(begin)) / 1000
+                    duration_total += duration
+                    text = t[1]
+                    lines_trans.append(f'{uttid}\t{text}\n')
+                    fp_wav = wav_scps[uttid]
+                    lines_scps.append(f'{uttid}\t{fp_wav}\n')
+    with open('z-merged-trans.txt', 'w') as f:
+        f.write(''.join(lines_trans))
+    with open('z-merged-wav_scp.txt', 'w') as f:
+        f.write(''.join(lines_scps))
+    print(f'done, {duration_total=}, {len(lines_scps)=}')
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="verify and split")
-    parser.add_argument('cmd', choices=['verify', 'split'], help="verify or split")
+    parser.add_argument('cmd', choices=['verify', 'split', 'merge'], help="verify or split or merge")
     parser.add_argument('--audio_dir', help='audio dir to be verified')
     parser.add_argument('--text_extract', help='text extraced for verify')
     parser.add_argument('--text_asr', help='text by asr for verify')
@@ -181,6 +226,8 @@ def main():
             verify_dir(args.audio_dir)
         else:
             verify(args.text_extract, args.text_asr)
+    elif args.cmd == 'merge':
+        merge(args.audio_dir)
     else:
         split_data(args.text, args.scp)
 
