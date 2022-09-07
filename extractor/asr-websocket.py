@@ -22,11 +22,15 @@ def read(wav_scp):
 
 async def decode(wav_scp, args):
     utils.lock_it(wav_scp)
-    begin = time.time()
+    start = time.time()
     trans = []
     wavs = read(wav_scp)
     tasks = []
     for uttid, path in wavs:
+        begin, end = uttid.split('_')[1].split('-')
+        duration = (int(end) - int(begin)) / 1000
+        if duration > 60:
+            continue
         with open(path, 'rb') as f:
             data = f.read()
         t = asyncio.create_task(ws_rec(data))
@@ -53,7 +57,7 @@ async def decode(wav_scp, args):
         print('==================== not equal', len(trans), len(wavs))
     with open(asr_trans, 'w') as f:
         f.write(''.join(trans))
-    timing = time.time() - begin
+    timing = time.time() - start
     print(f'done {wav_scp}, {timing=}')
     utils.unlock_it(wav_scp)
 
