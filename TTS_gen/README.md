@@ -15,8 +15,10 @@ For example:
 The `duration` and `pitch` of different phonemes in a sentence can have different scale ratios. You can set different scale ratios to emphasize or weaken the pronunciation of some phonemes.
 ## Usage
 Run the following command line to get started:
+开始前，需要下载百度的tts模型：
+设置模型参数，输入输出文件位置后，运行多线程TTS：
 ```
-./run.sh
+./s3run.sh
 ```
 In `run.sh`, it will execute `source path.sh` firstly, which will set the environment variants.
 
