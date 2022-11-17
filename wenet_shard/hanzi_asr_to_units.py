@@ -3,19 +3,32 @@
 
 
 import re
+import time
+import csv
+import argparse
 
 P_HANZI = re.compile(r'[\u4E00-\u9FA5]+')
 
 
-def gen_units():
-    name = './hanzi_asr.txt'
+def read():
+    name = './hanzi-通用规范汉字表.csv'
+    print('start read')
+    b = time.time()
     hanzi = []
-    with open(name) as f:
-        for line in f:
-            zi = line.strip()
-            if not zi:
+    with open(name) as fp:
+        reader = csv.DictReader(fp)
+        for row in reader:
+            level = float(row['ASR等级'])
+            if level >= 3:
                 continue
+            zi = row['汉字']
             hanzi.append(zi)
+    print('read done', time.time() - b)
+    return hanzi
+
+
+def gen_units():
+    hanzi = read()
     hanzi.sort()
     head = ['<blank>', '<unk>', '▁'] + [chr(i) for i in range(65, 65+26)]
     units = head + hanzi + ['<sos/eos>']
@@ -26,28 +39,37 @@ def gen_units():
 
 
 def check_oov(fn):
-    units = set()
-    with open('./hanzi_asr.txt') as f:
-        for line in f:
-            zi = line.strip()
-            if not zi:
-                continue
-            units.add(zi)
-    oov_count = 0
+    units = read()
+    oov = set()
     with open(fn) as f:
         for line in f:
             hanzi = ''.join(P_HANZI.findall(line))
             for zi in hanzi:
                 if zi not in units:
                     print('oov:', zi, line)
-                    oov_count += 1
-    print(f'{oov_count = }')
+                    oov.add(zi)
+    print(oov)
+    print(f'{len(oov) = }')
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument(
+        '-o', '--option',
+        choices=['gen', 'oov'],
+        help='options to do')
+    parser.add_argument(
+        '-f', '--file',
+        help='file to check oov')
+    args = parser.parse_args()
+    return args
 
 
 if __name__ == "__main__":
-    from sys import argv
-    if len(argv) > 1:
-        fn = argv[1]
-        check_oov(fn)
-    else:
+    args = get_args()
+    if args.option == 'gen':
         gen_units()
+    elif args.option == 'oov':
+        check_oov(args.file)
+    else:
+        print('invalid option:', args.option)
