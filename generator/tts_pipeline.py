@@ -4,6 +4,7 @@
 import os
 import random
 import soundfile as sf
+import soxr
 from pathlib import Path
 import numpy as np
 import paddle
@@ -93,7 +94,7 @@ class TTSPipeline:
         pwg_inference.eval()
         return pwg_inference
 
-    def tts(self, sentence, save_as, speakers=1):
+    def tts(self, sentence, save_as, speakers=1, resample=16000):
         input_ids = self.frontend.get_input_ids(sentence, merge_sentences=True)
         phone_ids = input_ids["phone_ids"][0]
         # 构建预测对象加载中文前端，对中文文本前端的输出进行分段
@@ -103,9 +104,14 @@ class TTSPipeline:
                 mel = self.acoustic_model(
                         phone_ids, spk_id=paddle.to_tensor(spk_id))
                 wav = self.vocoder(mel)
+                if resample != self.samplerate:
+                    wav = soxr.resample(wav, self.samplerate, resample)
+                    samplerate = resample
+                else:
+                    samplerate = self.samplerate
                 path = f'{save_as}_{spk_id:0>3}.wav'
                 uttid = path.split('/')[-1]
-                sf.write(path, wav, samplerate=self.samplerate)
+                sf.write(path, wav, samplerate=samplerate)
                 wavs.append((uttid, sentence, path))
         return wavs
 
