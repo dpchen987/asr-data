@@ -111,6 +111,8 @@ class TTSPipeline:
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     pl = TTSPipeline('./tts_models')
-    sentence = '今天天气很好啊'
-    wav = pl.tts(sentence, 'z.wav', 2)
+    sentence = '重不重，轻不轻啊'
+    sentence = '重不重轻不轻啊'
+    wav = pl.tts(sentence, 'zz.wav', 5)
