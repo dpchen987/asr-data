@@ -10,7 +10,8 @@ PIPE = None
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description='')
+    parser = argparse.ArgumentParser(
+        description='To Use GPU, you need to "export CUDA_VISIBLE_DEVICES=i" firstly')
     parser.add_argument(
         '-t', '--text',
         required=True,
@@ -33,8 +34,8 @@ def get_args():
         default=1000,
         help='count per dir')
     parser.add_argument(
-        '-g', '--gpu', default=False, action='store_true',
-        help='use gpu')
+        '-g', '--gpu_count', type=int, default=0,
+        help='count of GPU to use')
     args = parser.parse_args()
     return args
 
@@ -55,16 +56,6 @@ def make_path(wav_dir, text_id, text_id_len, sub_dir_len):
 def worker(item):
     global PIPE
     if not PIPE:
-        if ARGS.gpu:
-            import paddle
-            gpu_num = paddle.device.cuda.device_count()
-            print(f'======== {gpu_num = } ===========')
-            pid = os.getpid()
-            ppid = os.getppid()
-            gpu_id = (pid - ppid) % gpu_num
-            print(f'========= {pid = }, {ppid = }, {gpu_id = } ========')
-            os.environ['CUDA_VISIBLE_DEVICES'] = f'{gpu_id}'
-
         # 在进程里面import paddle，否则会出现错误：
         # "The API call failed because the CUDA driver and
         # runtime could not be initialized"
@@ -84,15 +75,25 @@ def worker(item):
 def main():
     import time
     from multiprocessing import Pool
+    gpu_id = -1
+    if ARGS.gpu_count > 0:
+        gpu_id = int(os.environ['CUDA_VISIBLE_DEVICES'])
+        assert ARGS.gpu_count > gpu_id
     sentences = []
-    i = 0
+    i = -1
     with open(ARGS.text) as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
-            sentences.append((i, line))
             i += 1
+            if ARGS.gpu_count > 0:
+                if i % ARGS.gpu_count == gpu_id:
+                    sentences.append((i, line))
+                else:
+                    pass
+            else:
+                sentences.append((i, line))
     ARGS.text_id_len = int(math.log10(len(sentences))) + 1
     sub_dir_count = int(
             len(sentences) * ARGS.speekers / ARGS.count_per_dir) + 1
