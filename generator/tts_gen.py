@@ -56,7 +56,15 @@ def worker(item):
     global PIPE
     if not PIPE:
         if ARGS.gpu:
-            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+            import paddle
+            gpu_num = paddle.device.cuda.device_count()
+            print(f'======== {gpu_num = } ===========')
+            pid = os.getpid()
+            ppid = os.getppid()
+            gpu_id = (pid - ppid) % gpu_num
+            print(f'========= {pid = }, {ppid = }, {gpu_id = } ========')
+            os.environ['CUDA_VISIBLE_DEVICES'] = f'{gpu_id}'
+
         # 在进程里面import paddle，否则会出现错误：
         # "The API call failed because the CUDA driver and
         # runtime could not be initialized"
