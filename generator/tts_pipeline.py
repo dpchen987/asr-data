@@ -25,10 +25,9 @@ class TTSPipeline:
         print('loading vocoder ...')
         self.vocoder = self.load_vocoder(model_dir)
         if os.environ.get('CUDA_VISIBLE_DEVICES'):
-            print('paddle.set_device to GPU')
-            paddle.fluid.install_check.run_check()
-            print(paddle.fluid.is_compiled_with_cuda())
-            paddle.set_device('gpu:0')
+            gpu_id = os.environ.get('CUDA_VISIBLE_DEVICES')
+            print(f'paddle.set_device to GPU: {gpu_id = }')
+            paddle.set_device(f'gpu:{gpu_id}')
         else:
             print('paddle.set_device to CPU')
             paddle.set_device('cpu')
