@@ -100,6 +100,12 @@ class TTSPipeline:
         wavs = []
         with paddle.no_grad():
             for spk_id in random.sample(range(self.spk_num), speakers):
+                path = f'{save_as}_{spk_id:0>3}.wav'
+                uttid = path.split('/')[-1]
+                wavs.append((uttid, sentence, path))
+                if os.path.exists(path):
+                    print(f'has {path}, skip gen')
+                    continue
                 mel = self.acoustic_model(
                         phone_ids, spk_id=paddle.to_tensor(spk_id))
                 wav = self.vocoder(mel)
@@ -108,10 +114,7 @@ class TTSPipeline:
                     samplerate = resample
                 else:
                     samplerate = self.samplerate
-                path = f'{save_as}_{spk_id:0>3}.wav'
-                uttid = path.split('/')[-1]
                 sf.write(path, wav, samplerate=samplerate)
-                wavs.append((uttid, sentence, path))
         return wavs
 
 
