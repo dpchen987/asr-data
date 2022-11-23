@@ -26,8 +26,9 @@ class TTSPipeline:
         self.vocoder = self.load_vocoder(model_dir)
         if os.environ.get('CUDA_VISIBLE_DEVICES'):
             gpu_id = os.environ.get('CUDA_VISIBLE_DEVICES')
+            gpu_id = f'gpu:{gpu_id}'
             print(f'paddle.set_device to GPU: {gpu_id = }')
-            paddle.set_device(f'gpu:{gpu_id}')
+            # paddle.set_device(gpu_id)
         else:
             print('paddle.set_device to CPU')
             paddle.set_device('cpu')
@@ -104,7 +105,7 @@ class TTSPipeline:
                 uttid = path.split('/')[-1]
                 wavs.append((uttid, sentence, path))
                 if os.path.exists(path):
-                    print(f'has {path}, skip gen')
+                    # print(f'has {path}, skip gen')
                     continue
                 mel = self.acoustic_model(
                         phone_ids, spk_id=paddle.to_tensor(spk_id))

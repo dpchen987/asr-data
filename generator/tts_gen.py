@@ -94,10 +94,11 @@ def main():
                     pass
             else:
                 sentences.append((i, line))
-    ARGS.text_id_len = int(math.log10(len(sentences))) + 1
+    ARGS.text_id_len = int(math.log10(i)) + 1
     sub_dir_count = int(
-            len(sentences) * ARGS.speekers / ARGS.count_per_dir) + 1
+            i * ARGS.speekers / ARGS.count_per_dir) + 1
     ARGS.sub_dir_len = int(math.log10(sub_dir_count)) + 1
+    print(f'{i = }, {len(sentences) = }')
     print(ARGS)
     pool = Pool(processes=ARGS.processes)
     print('start')
