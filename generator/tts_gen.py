@@ -18,7 +18,6 @@ def get_args():
         help='text to TTS, one line one sentence')
     parser.add_argument(
         '-m', '--model',
-        required=True,
         help='dir of model')
     parser.add_argument(
         '-s', '--speekers', type=int,
@@ -36,8 +35,45 @@ def get_args():
     parser.add_argument(
         '-g', '--gpu_count', type=int, default=0,
         help='count of GPU to use')
+    parser.add_argument(
+        '-x', '--make', action='store_true',
+        help='make wav_scp/text from text and wavs')
     args = parser.parse_args()
     return args
+
+
+def make_scp():
+    sentences = {}  # {id: text}
+    sid = 0
+    with open(ARGS.text) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            sentences[sid] = line
+            sid += 1
+    print(f'{len(sentences) = }, {sid = }')
+    import os
+    trans = []
+    scps = []
+    for root, dirs, files in os.walk(ARGS.wave_dir):
+        for fn in files:
+            sid = int(fn.split('_')[0])
+            if sid not in sentences:
+                print('invalid sid', sid)
+                continue
+            uttid = fn.split('.')[0]
+            trans.append(f'{uttid}\t{sentences[sid]}\n')
+            path = os.path.join(root, fn)
+            scps.append(f'{uttid}\t{path}\n')
+    print(f'{len(trans) = }, {len(scps) = }')
+    trans.sort()
+    scps.sort()
+    with open(f'{ARGS.text}_all_trans.txt', 'w') as f:
+        f.write(''.join(trans))
+    with open(f'{ARGS.text}_all_scp.txt', 'w') as f:
+        f.write(''.join(scps))
+    print('done')
 
 
 def make_path(wav_dir, text_id, text_id_len, sub_dir_len):
@@ -107,8 +143,8 @@ def main():
     for rs in pool.map(worker, sentences):
         wavs.extend(rs)
     print(f'{len(wavs) = }')
-    name_txt = f'{ARGS.text}.text.txt'
-    name_scp = f'{ARGS.text}.scp.txt'
+    name_txt = f'{ARGS.text}_{gpu_id}.text.txt'
+    name_scp = f'{ARGS.text}_{gpu_id}.scp.txt'
     with open(name_txt, 'w') as ftxt, open(name_scp, 'w') as fscp:
         for w in wavs:
             ftxt.write(f'{w[0]}\t{w[1]}\n')
@@ -122,4 +158,7 @@ def main():
 if __name__ == "__main__":
     ARGS = get_args()
     print(ARGS)
-    main()
+    if ARGS.make:
+        make_scp()
+    else:
+        main()
